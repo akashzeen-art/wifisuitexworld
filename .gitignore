@@ -1,0 +1,21 @@
+# Maven
+backend/target/
+
+# Node
+frontend/node_modules/
+desktop-app/node_modules/
+node_modules/
+
+# Android
+android/.gradle/
+android/local.properties
+android/app/build/
+android/build/
+
+# Env / secrets
+*.env
+application-temp.properties
+
+# IDE
+.idea/
+*.iml

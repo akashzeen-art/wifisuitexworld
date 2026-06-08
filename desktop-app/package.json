@@ -1,0 +1,59 @@
+{
+  "name": "wifi-extender-desktop",
+  "version": "1.0.0",
+  "description": "WiFi Extender Desktop App",
+  "main": "src/main.js",
+  "scripts": {
+    "dev": "concurrently \"vite --port 5174\" \"wait-on http://localhost:5174 && electron .\"",
+    "build": "vite build && electron-builder",
+    "start": "electron ."
+  },
+  "build": {
+    "appId": "com.wifiextender.app",
+    "productName": "WiFiExtender",
+    "win": {
+      "target": "nsis",
+      "requestedExecutionLevel": "requireAdministrator",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "files": [
+      "dist/**/*",
+      "src/main.js",
+      "src/preload.js",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ]
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "electron-store": "^8.1.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.9.1",
+    "framer-motion": "^10.16.16",
+    "lucide-react": "^0.294.0",
+    "postcss": "^8.4.32",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.10.3",
+    "tailwindcss": "^3.3.6",
+    "vite": "^5.0.0",
+    "wait-on": "^7.2.0",
+    "zustand": "^4.4.7"
+  }
+}

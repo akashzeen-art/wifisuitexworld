@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="brand_primary">#2450ea</color>
+    <color name="brand_light">#eef5ff</color>
+    <color name="background">#f8fafc</color>
+    <color name="surface">#ffffff</color>
+    <color name="text_primary">#0f172a</color>
+    <color name="text_secondary">#64748b</color>
+    <color name="green_500">#22c55e</color>
+    <color name="red_500">#ef4444</color>
+    <color name="gray_400">#94a3b8</color>
+    <color name="amber_500">#f59e0b</color>
+</resources>

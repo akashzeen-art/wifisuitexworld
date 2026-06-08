@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/swipe_refresh"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/background">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <TextView
+                android:id="@+id/tv_greeting"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Good morning 👋"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary" />
+
+            <!-- Device Stats Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:orientation="horizontal">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/surface">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" android:padding="16dp" android:gravity="center">
+                        <TextView android:id="@+id/tv_online_devices" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:text="0"
+                            android:textSize="28sp" android:textStyle="bold" android:textColor="@color/green_500" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Online" android:textSize="12sp" android:textColor="@color/text_secondary" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginHorizontal="6dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/surface">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" android:padding="16dp" android:gravity="center">
+                        <TextView android:id="@+id/tv_blocked_devices" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:text="0"
+                            android:textSize="28sp" android:textStyle="bold" android:textColor="@color/red_500" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Blocked" android:textSize="12sp" android:textColor="@color/text_secondary" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardElevation="2dp"
+                    app:cardBackgroundColor="@color/surface">
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="vertical" android:padding="16dp" android:gravity="center">
+                        <TextView android:id="@+id/tv_total_devices" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:text="0"
+                            android:textSize="28sp" android:textStyle="bold" android:textColor="@color/brand_primary" />
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Total" android:textSize="12sp" android:textColor="@color/text_secondary" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+
+            <!-- No subscription message -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/tv_no_sub"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:visibility="gone"
+                app:cardCornerRadius="16dp"
+                app:cardBackgroundColor="#EEF5FF">
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:padding="16dp"
+                    android:text="No active subscription. Go to Subscription tab to get started."
+                    android:textColor="@color/brand_primary" android:textSize="14sp" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Subscription Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_subscription"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:visibility="gone"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="@color/surface">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:padding="20dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Current Plan" android:textSize="12sp" android:textColor="@color/text_secondary" />
+                    <TextView android:id="@+id/tv_plan_name" android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:text="—"
+                        android:textSize="22sp" android:textStyle="bold" android:textColor="@color/text_primary"
+                        android:layout_marginTop="4dp" />
+                    <TextView android:id="@+id/tv_plan_status" android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:text="ACTIVE"
+                        android:textSize="12sp" android:textColor="@color/green_500" android:layout_marginTop="4dp" />
+                    <TextView android:id="@+id/tv_plan_expiry" android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:text="—"
+                        android:textSize="13sp" android:textColor="@color/text_secondary" android:layout_marginTop="6dp" />
+                    <TextView android:id="@+id/tv_max_devices" android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:text="—"
+                        android:textSize="13sp" android:textColor="@color/brand_primary" android:layout_marginTop="4dp" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- License Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_license"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:visibility="gone"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="@color/surface">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="vertical" android:padding="20dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="License Key" android:textSize="12sp" android:textColor="@color/text_secondary" />
+                    <TextView android:id="@+id/tv_license_key" android:layout_width="match_parent"
+                        android:layout_height="wrap_content" android:text="—"
+                        android:textSize="15sp" android:fontFamily="monospace"
+                        android:textColor="@color/text_primary" android:layout_marginTop="8dp"
+                        android:background="@color/background" android:padding="12dp" />
+                    <TextView android:id="@+id/tv_license_plan" android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:text="—"
+                        android:textSize="13sp" android:textColor="@color/brand_primary" android:layout_marginTop="8dp" />
+                    <TextView android:id="@+id/tv_license_expiry" android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" android:text="—"
+                        android:textSize="13sp" android:textColor="@color/text_secondary" android:layout_marginTop="4dp" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_copy_key"
+                        android:layout_width="match_parent"
+                        android:layout_height="44dp"
+                        android:layout_marginTop="12dp"
+                        android:text="Copy License Key"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+        </LinearLayout>
+    </ScrollView>
+</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

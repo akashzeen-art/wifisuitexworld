@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="10dp"
+    app:cardCornerRadius="14dp"
+    app:cardElevation="2dp"
+    app:cardBackgroundColor="@color/surface">
+
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="16dp">
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:gravity="center_vertical">
+
+            <View android:id="@+id/view_status_dot"
+                android:layout_width="10dp" android:layout_height="10dp"
+                android:background="@drawable/bg_circle" android:layout_marginEnd="10dp" />
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical">
+                <TextView android:id="@+id/tv_device_name"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Unknown Device" android:textSize="15sp" android:textStyle="bold"
+                    android:textColor="@color/text_primary" />
+                <TextView android:id="@+id/tv_mac_address"
+                    android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="—" android:textSize="11sp" android:textColor="@color/text_secondary"
+                    android:fontFamily="monospace" android:layout_marginTop="2dp" />
+            </LinearLayout>
+
+            <TextView android:id="@+id/tv_status"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="Online" android:textSize="12sp" android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal" android:layout_marginTop="10dp">
+            <TextView android:id="@+id/tv_ip_address"
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:text="IP: —"
+                android:textSize="12sp" android:textColor="@color/text_secondary" />
+            <TextView android:id="@+id/tv_device_type"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="UNKNOWN" android:textSize="11sp" android:textColor="@color/text_secondary" />
+        </LinearLayout>
+
+        <TextView android:id="@+id/tv_vendor"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="" android:textSize="11sp" android:textColor="@color/text_secondary"
+            android:layout_marginTop="2dp" />
+
+        <TextView android:id="@+id/tv_bandwidth"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="0 B ↓  0 B ↑" android:textSize="12sp"
+            android:textColor="@color/brand_primary" android:layout_marginTop="6dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_block"
+            android:layout_width="match_parent" android:layout_height="40dp"
+            android:layout_marginTop="10dp"
+            android:text="Block"
+            android:textSize="13sp"
+            style="@style/Widget.MaterialComponents.Button" />
+
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

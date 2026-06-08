@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="WiFi Extender"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Connect to WiFi and share to nearby devices"
+            android:textSize="13sp"
+            android:textColor="@color/text_secondary"
+            android:layout_marginTop="4dp" />
+
+        <!-- WiFi → Hotspot Flow Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            app:cardCornerRadius="20dp"
+            app:cardElevation="4dp"
+            app:cardBackgroundColor="@color/surface">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <!-- Flow diagram -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:layout_marginBottom="20dp">
+
+                    <!-- WiFi Source -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center">
+                        <TextView android:layout_width="48dp" android:layout_height="48dp"
+                            android:text="📶" android:textSize="28sp" android:gravity="center"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:id="@+id/tv_wifi_source"
+                            android:text="Your WiFi" android:textSize="11sp"
+                            android:textColor="@color/text_secondary" android:gravity="center"/>
+                    </LinearLayout>
+
+                    <!-- Arrow -->
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="→" android:textSize="24sp" android:textColor="@color/brand_primary"
+                        android:layout_marginHorizontal="8dp"/>
+
+                    <!-- Phone -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center">
+                        <TextView android:layout_width="48dp" android:layout_height="48dp"
+                            android:text="📱" android:textSize="28sp" android:gravity="center"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Your Phone" android:textSize="11sp"
+                            android:textColor="@color/text_secondary" android:gravity="center"/>
+                    </LinearLayout>
+
+                    <!-- Arrow -->
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="→" android:textSize="24sp" android:textColor="@color/brand_primary"
+                        android:layout_marginHorizontal="8dp"/>
+
+                    <!-- Devices -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:gravity="center">
+                        <TextView android:layout_width="48dp" android:layout_height="48dp"
+                            android:text="💻" android:textSize="28sp" android:gravity="center"/>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:id="@+id/tv_connected_count"
+                            android:text="0 devices" android:textSize="11sp"
+                            android:textColor="@color/text_secondary" android:gravity="center"/>
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <!-- Status -->
+                <TextView
+                    android:id="@+id/tv_hotspot_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Hotspot Inactive"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_secondary"
+                    android:layout_gravity="center_horizontal"/>
+
+                <!-- Uptime -->
+                <TextView
+                    android:id="@+id/tv_uptime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="00:00:00"
+                    android:textSize="32sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/brand_primary"
+                    android:fontFamily="monospace"
+                    android:layout_marginTop="8dp"
+                    android:layout_gravity="center_horizontal"/>
+
+                <!-- Toggle Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_toggle_hotspot"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="20dp"
+                    android:text="▶  Start Hotspot"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    style="@style/Widget.MaterialComponents.Button" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Credentials Card (shown when active) -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_hotspot_info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/surface">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🔐 Hotspot Credentials"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    android:layout_marginBottom="16dp" />
+
+                <!-- SSID -->
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Network Name (SSID)" android:textSize="11sp"
+                            android:textColor="@color/text_secondary" />
+                        <TextView android:id="@+id/tv_ssid" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:text="—"
+                            android:textSize="16sp" android:textStyle="bold"
+                            android:textColor="@color/text_primary" android:layout_marginTop="2dp" />
+                    </LinearLayout>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_copy_ssid" android:layout_width="wrap_content"
+                        android:layout_height="36dp" android:text="COPY" android:textSize="12sp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="1dp"
+                    android:background="#f1f5f9" android:layout_marginBottom="12dp" />
+
+                <!-- Password -->
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                    android:orientation="horizontal" android:gravity="center_vertical">
+                    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:orientation="vertical">
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Password" android:textSize="11sp"
+                            android:textColor="@color/text_secondary" />
+                        <TextView android:id="@+id/tv_password" android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" android:text="—"
+                            android:textSize="16sp" android:textStyle="bold"
+                            android:textColor="@color/text_primary" android:fontFamily="monospace"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_copy_password" android:layout_width="wrap_content"
+                        android:layout_height="36dp" android:text="COPY" android:textSize="12sp"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                </LinearLayout>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- How it works note -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="#FFF8E1">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp"
+                android:text="💡 How it works:\n1. Tap Start Hotspot\n2. Turn ON hotspot in the screen that opens\n3. Come back — app will auto-detect and show credentials\n4. Share credentials with others to connect"
+                android:textSize="12sp"
+                android:textColor="#F57F17"
+                android:lineSpacingExtra="4dp" />
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+</ScrollView>
