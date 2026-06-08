@@ -6,6 +6,9 @@ frontend/node_modules/
 desktop-app/node_modules/
 node_modules/
 
+# Desktop app build artifacts (large binaries)
+desktop-app/dist/
+
 # Android
 android/.gradle/
 android/local.properties
