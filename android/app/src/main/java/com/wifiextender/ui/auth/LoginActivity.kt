@@ -25,22 +25,17 @@ class LoginActivity : AppCompatActivity() {
 
         tokenManager = TokenManager(this)
         RetrofitClient.init(tokenManager, this)
-
-        binding.etServerUrl.setText(ApiConfig.getBaseUrl(this))
+        ApiConfig.ensureProductionUrl(this)
+        RetrofitClient.resetApi()
 
         binding.btnLogin.setOnClickListener {
-            val email    = binding.etEmail.text.toString().trim()
+            val email = binding.etEmail.text.toString().trim()
             val password = binding.etPassword.text.toString()
-            val serverUrl = binding.etServerUrl.text.toString().trim()
             if (email.isEmpty() || password.isEmpty()) {
                 showError("Please fill in all fields")
                 return@setOnClickListener
             }
-            if (serverUrl.isNotEmpty()) {
-                ApiConfig.setBaseUrl(this, serverUrl)
-                RetrofitClient.resetApi()
-            }
-            viewModel.login(email, password, ApiConfig.getBaseUrl(this)) { access, refresh, user ->
+            viewModel.login(email, password) { access, refresh, user ->
                 tokenManager.saveTokens(access, refresh)
                 tokenManager.saveUser(user)
             }

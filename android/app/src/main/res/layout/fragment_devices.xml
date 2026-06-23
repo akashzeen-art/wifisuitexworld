@@ -42,18 +42,28 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/rv_devices"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:padding="12dp"
-            android:clipToPadding="false" />
-    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <TextView android:id="@+id/tv_empty"
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:text="No devices connected yet.\nTurn on hotspot and connect a device to your WiFi network."
-        android:textColor="@color/text_secondary" android:textSize="14sp"
-        android:gravity="center" android:padding="40dp" android:visibility="gone" />
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rv_devices"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="12dp"
+                android:clipToPadding="false" />
+
+            <TextView android:id="@+id/tv_empty"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:text="Waiting for devices…\n\n1. Hotspot must be ON\n2. Connect another device to Extendra-WiFi\n3. Wait ~30 seconds — list updates automatically"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:gravity="center"
+                android:padding="32dp"
+                android:visibility="gone" />
+        </FrameLayout>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
 </LinearLayout>

@@ -2,7 +2,7 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="@drawable/bg_auth_gradient"
     android:fillViewport="true">
 
     <LinearLayout
@@ -68,29 +68,6 @@
                 android:imeOptions="actionDone" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
-            android:hint="Server URL">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/et_server_url"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textUri"
-                android:imeOptions="actionDone" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="USB dev: run adb reverse tcp:8080 tcp:8080 on your Mac"
-            android:textColor="@color/text_secondary"
-            android:textSize="12sp" />
-
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_login"
             android:layout_width="match_parent"
@@ -99,7 +76,8 @@
             android:text="Sign In"
             android:textSize="16sp"
             android:textStyle="bold"
-            style="@style/Widget.MaterialComponents.Button" />
+            style="@style/Widget.MaterialComponents.Button"
+            android:backgroundTint="@color/brand_600" />
 
         <ProgressBar
             android:id="@+id/progress_bar"

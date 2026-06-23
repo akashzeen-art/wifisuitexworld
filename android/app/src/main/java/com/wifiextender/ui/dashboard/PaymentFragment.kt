@@ -38,10 +38,10 @@ class PaymentFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val planId = arguments?.getLong(ARG_PLAN_ID) ?: return
 
-        // Derive frontend URL from BASE_URL (same host, port 5173)
-        val baseUrl = BuildConfig.BASE_URL // e.g. http://192.168.1.15:8080/api/
-        val host = baseUrl.removePrefix("http://").removePrefix("https://").substringBefore(":")
-        val frontendUrl = "http://$host:5173"
+        val frontendUrl = BuildConfig.BASE_URL
+            .removeSuffix("/api/")
+            .removeSuffix("/api")
+            .trimEnd('/')
 
         binding.btnClose.setOnClickListener {
             parentFragmentManager.popBackStack()

@@ -23,7 +23,6 @@ class AuthViewModel : ViewModel() {
     fun login(
         email: String,
         password: String,
-        serverUrl: String,
         onSave: (String, String, com.wifiextender.data.model.UserInfo) -> Unit
     ) {
         _state.value = AuthState.Loading
@@ -39,9 +38,7 @@ class AuthViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 _state.value = AuthState.Error(
-                    "Cannot reach server at $serverUrl\n" +
-                        "• USB: adb reverse tcp:8080 tcp:8080\n" +
-                        "• Same WiFi: use http://YOUR_MAC_IP:8080/api/"
+                    "Cannot connect to server. Check your internet and try again."
                 )
             }
         }

@@ -1,12 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="brand_primary">#2450ea</color>
-    <color name="brand_light">#eef5ff</color>
-    <color name="background">#f8fafc</color>
+    <!-- Match website brand palette (tailwind brand + signal) -->
+    <color name="brand_50">#ecfdf5</color>
+    <color name="brand_100">#d1fae5</color>
+    <color name="brand_200">#a7f3d0</color>
+    <color name="brand_400">#34d399</color>
+    <color name="brand_500">#10b981</color>
+    <color name="brand_600">#059669</color>
+    <color name="brand_700">#047857</color>
+    <color name="brand_800">#065f46</color>
+
+    <color name="signal_500">#14b8a6</color>
+    <color name="signal_600">#0d9488</color>
+
+    <color name="brand_primary">#059669</color>
+    <color name="brand_light">#ecfdf5</color>
+
+    <color name="background">#f8fafb</color>
     <color name="surface">#ffffff</color>
     <color name="text_primary">#0f172a</color>
     <color name="text_secondary">#64748b</color>
-    <color name="green_500">#22c55e</color>
+
+    <color name="green_500">#10b981</color>
+    <color name="emerald_400">#34d399</color>
     <color name="red_500">#ef4444</color>
     <color name="gray_400">#94a3b8</color>
     <color name="amber_500">#f59e0b</color>

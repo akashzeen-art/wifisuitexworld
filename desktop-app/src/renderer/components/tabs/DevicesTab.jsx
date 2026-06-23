@@ -257,7 +257,7 @@ export default function DevicesTab({ devices, setDevices, toggleBlock, hotspotAc
                         <ArrowDownRight className="w-3 h-3" />
                         {formatBytes(device.bytesReceived)}
                       </div>
-                      <div className="flex items-center gap-1 text-[10px] text-cyan-500 font-semibold justify-end">
+                      <div className="flex items-center gap-1 text-[10px] text-teal-500 font-semibold justify-end">
                         <ArrowUpRight className="w-3 h-3" />
                         {formatBytes(device.bytesSent)}
                       </div>

@@ -14,7 +14,7 @@ const MODES = [
     desc: 'Connect to existing WiFi and rebroadcast it with extended range. Requires 2 WiFi adapters.',
     badge: 'Recommended',
     badgeColor: 'bg-brand-100 text-brand-700',
-    color: 'from-brand-500 to-cyan-500',
+    color: 'from-brand-500 to-teal-500',
   },
   {
     id: 'BRIDGE',
@@ -150,11 +150,11 @@ export default function SetupWizard({ onComplete }) {
   }
 
   return (
-    <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 px-6">
+    <div className="h-screen flex items-center justify-center auth-page-bg px-6">
       <div className="w-full max-w-lg">
 
         <div className="text-center mb-6">
-          <div className="w-12 h-12 bg-gradient-to-br from-brand-600 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-button">
+          <div className="w-12 h-12 bg-gradient-to-br from-brand-600 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-button">
             <Wifi className="w-6 h-6 text-white" />
           </div>
           <h1 className="text-xl font-bold text-slate-900">WiFiExtender Setup</h1>

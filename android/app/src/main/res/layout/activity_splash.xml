@@ -4,12 +4,12 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:gravity="center"
-    android:background="@color/brand_primary">
+    android:background="@drawable/bg_splash_gradient">
 
     <ImageView
         android:layout_width="96dp"
         android:layout_height="96dp"
-        android:src="@drawable/ic_wifi_logo"
+        android:src="@drawable/ic_wifi_logo_white"
         android:contentDescription="Logo" />
 
     <TextView

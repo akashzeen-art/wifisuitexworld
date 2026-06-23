@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.wifiextender.data.api.ApiConfig
 import com.wifiextender.data.prefs.TokenManager
 import com.wifiextender.ui.dashboard.MainActivity
 import kotlinx.coroutines.delay
@@ -16,6 +17,7 @@ class SplashActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(com.wifiextender.R.layout.activity_splash)
+        ApiConfig.ensureProductionUrl(this)
         val tokenManager = TokenManager(this)
 
         lifecycleScope.launch {

@@ -6,6 +6,7 @@ import android.view.View
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.snackbar.Snackbar
+import com.wifiextender.data.api.ApiConfig
 import com.wifiextender.data.api.RetrofitClient
 import com.wifiextender.data.prefs.TokenManager
 import com.wifiextender.databinding.ActivityRegisterBinding
@@ -24,6 +25,8 @@ class RegisterActivity : AppCompatActivity() {
 
         tokenManager = TokenManager(this)
         RetrofitClient.init(tokenManager, this)
+        ApiConfig.ensureProductionUrl(this)
+        RetrofitClient.resetApi()
 
         binding.btnRegister.setOnClickListener {
             val name     = binding.etName.text.toString().trim()

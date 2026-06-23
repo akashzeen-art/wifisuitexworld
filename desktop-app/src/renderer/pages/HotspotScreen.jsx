@@ -122,7 +122,7 @@ export default function HotspotScreen() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50 overflow-hidden">
+    <div className="h-screen flex flex-col dashboard-bg overflow-hidden">
       <TitleBar />
 
       {/* License warning */}
@@ -148,7 +148,7 @@ export default function HotspotScreen() {
           {/* Logo */}
           <div className="px-4 py-4 border-b border-slate-100">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center shadow-sm">
+              <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-teal-500 rounded-xl flex items-center justify-center shadow-sm">
                 <Wifi className="w-4 h-4 text-white" />
               </div>
               <div>
@@ -179,7 +179,7 @@ export default function HotspotScreen() {
                 onClick={() => setTab(id)}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
                   tab === id
-                    ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-md shadow-blue-500/20'
+                    ? 'bg-gradient-to-r from-brand-600 to-teal-500 text-white shadow-md shadow-brand-500/20'
                     : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
                 }`}
               >
@@ -192,14 +192,14 @@ export default function HotspotScreen() {
 
           {/* License */}
           <div className="px-3 py-3 border-t border-slate-100 space-y-2">
-            <div className="px-3 py-2.5 rounded-xl bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-100">
+            <div className="px-3 py-2.5 rounded-xl bg-gradient-to-br from-brand-50 to-emerald-50 border border-brand-100">
               <div className="flex items-center gap-1.5 mb-1">
-                <Key className="w-3 h-3 text-blue-500" />
-                <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest">License Key</span>
+                <Key className="w-3 h-3 text-brand-500" />
+                <span className="text-[9px] font-black text-brand-600 uppercase tracking-widest">License Key</span>
               </div>
               <p className="font-mono text-[9px] text-slate-500 truncate">{licenseKey}</p>
               {licenseData?.planName && (
-                <div className="mt-1.5 inline-flex items-center gap-1 bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-md">
+                <div className="mt-1.5 inline-flex items-center gap-1 bg-brand-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-md">
                   {licenseData.planName}
                 </div>
               )}

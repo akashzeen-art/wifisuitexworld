@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import com.wifiextender.data.prefs.TokenManager
 import com.wifiextender.databinding.FragmentProfileBinding
 import com.wifiextender.ui.auth.LoginActivity
+import com.wifiextender.utils.HotspotManager
 
 class ProfileFragment : Fragment() {
 
@@ -33,8 +34,8 @@ class ProfileFragment : Fragment() {
             binding.tvRole.setBackgroundResource(com.wifiextender.R.drawable.bg_badge_admin)
         }
 
-        binding.tvAppVersion.text = "WiFiExtender v1.0.0"
-        binding.tvBackendUrl.text = com.wifiextender.data.api.ApiConfig.getBaseUrl(requireContext())
+        val brand = HotspotManager.getInstance(requireContext()).getDetectedPhoneBrand()
+        binding.tvAppVersion.text = "WiFiExtender v1.2.0 · $brand"
 
         binding.btnLogout.setOnClickListener {
             androidx.appcompat.app.AlertDialog.Builder(requireContext())

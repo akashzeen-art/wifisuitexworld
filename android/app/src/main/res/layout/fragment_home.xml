@@ -111,7 +111,7 @@
                 android:layout_marginTop="16dp"
                 android:visibility="gone"
                 app:cardCornerRadius="16dp"
-                app:cardBackgroundColor="#EEF5FF">
+                app:cardBackgroundColor="@color/brand_50">
                 <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
                     android:padding="16dp"
                     android:text="No active subscription. Go to Subscription tab to get started."

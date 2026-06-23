@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import com.wifiextender.R
 import com.wifiextender.data.api.RetrofitClient
 import com.wifiextender.data.prefs.TokenManager
@@ -14,6 +15,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     lateinit var tokenManager: TokenManager
+    private lateinit var dashboardViewModel: DashboardViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,7 +29,11 @@ class MainActivity : AppCompatActivity() {
             goToLogin(); return
         }
 
-        // Request permissions for WiFi/hotspot features
+        com.wifiextender.utils.HotspotManager.getInstance(applicationContext).ensureClientListeners()
+
+        dashboardViewModel = ViewModelProvider(this)[DashboardViewModel::class.java]
+        dashboardViewModel.startRealtimeDeviceMonitoring(applicationContext)
+
         val perms = mutableListOf(
             android.Manifest.permission.ACCESS_FINE_LOCATION,
             android.Manifest.permission.ACCESS_COARSE_LOCATION
@@ -43,9 +49,6 @@ class MainActivity : AppCompatActivity() {
             androidx.core.app.ActivityCompat.requestPermissions(this, missing.toTypedArray(), 1001)
         }
 
-        com.wifiextender.utils.HotspotManager(applicationContext).ensureClientListeners()
-
-        // Create fragment instances once
         val homeFragment         = HomeFragment()
         val hotspotFragment      = HotspotFragment()
         val devicesFragment      = DevicesFragment()

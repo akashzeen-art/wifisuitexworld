@@ -18,9 +18,14 @@ import androidx.fragment.app.activityViewModels
 import com.google.android.material.snackbar.Snackbar
 import com.wifiextender.R
 import com.wifiextender.databinding.FragmentHotspotBinding
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.wifiextender.utils.ConnectedClient
 import com.wifiextender.utils.HotspotApplyResult
 import com.wifiextender.utils.HotspotManager
+import com.wifiextender.utils.HotspotRealtimeMonitor
 
 class HotspotFragment : Fragment() {
 
@@ -45,13 +50,19 @@ class HotspotFragment : Fragment() {
     private var ssidConfirmDialog: AlertDialog? = null
     private var isFragmentResumed = false
 
+    private val realtimeListener: (List<ConnectedClient>) -> Unit = listener@{ clients ->
+        activity?.runOnUiThread {
+            if (_binding != null && isHotspotActive) updateConnectedDisplay(clients)
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHotspotBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        hotspotManager = HotspotManager(requireContext())
+        hotspotManager = HotspotManager.getInstance(requireContext())
         hotspotManager.ensurePhoneSsidListener()
 
         viewModel.subscription.observe(viewLifecycleOwner) { sub ->
@@ -98,7 +109,7 @@ class HotspotFragment : Fragment() {
         }
 
         if (hotspotManager.isHotspotOn()) {
-            isHotspotActive = true
+            setHotspotRunning(true)
             refreshCredentialsQuietly()
             setUiStarted()
             startUptimeTimer()
@@ -339,7 +350,12 @@ class HotspotFragment : Fragment() {
             binding.tvPassword.text = "Tap to enter password →"
         }
 
-        updateConnectedDisplay(hotspotManager.readConnectedClients())
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val clients = hotspotManager.discoverConnectedClients(deepScan = true)
+            withContext(Dispatchers.Main) {
+                if (_binding != null) updateConnectedDisplay(clients)
+            }
+        }
     }
 
     /** Force UI to match phone hotspot name — never opens dialogs (polling-safe) */
@@ -397,6 +413,13 @@ class HotspotFragment : Fragment() {
         }
         binding.tvConnectedNames.visibility = View.VISIBLE
         enforceDeviceLimit(count)
+        if (clients.isNotEmpty()) viewModel.publishLocalClients(requireContext(), clients)
+    }
+
+    private fun setHotspotRunning(active: Boolean) {
+        isHotspotActive = active
+        hotspotManager.userHotspotActive = active
+        viewModel.setHotspotActive(active)
     }
 
     private fun applyAndSaveCredentials(ssid: String, password: String) {
@@ -514,11 +537,11 @@ class HotspotFragment : Fragment() {
             override fun run() {
                 if (_binding == null || !isHotspotActive) return
                 syncUiFromPhone()
-                viewModel.scanAndReportDevices(requireContext())
-                handler.postDelayed(this, 15000)
+                hotspotManager.forceRealtimeRefresh()
+                handler.postDelayed(this, 15_000)
             }
         }
-        handler.postDelayed(syncRunnable!!, 2000)
+        handler.post(syncRunnable!!)
     }
 
     private fun stopSyncPolling() {
@@ -571,7 +594,7 @@ class HotspotFragment : Fragment() {
                 if (_binding == null) return
                 checks++
                 if (hotspotManager.isHotspotOn()) {
-                    isHotspotActive = true
+                    setHotspotRunning(true)
                     passwordDialogShown = false
                     lastSyncedCredentials = null
                     refreshCredentialsQuietly()
@@ -598,8 +621,8 @@ class HotspotFragment : Fragment() {
             override fun run() {
                 if (_binding == null) return
                 checks++
-                if (!hotspotManager.isHotspotOn()) {
-                    isHotspotActive = false
+                if (!hotspotManager.isHotspotLikelyActive()) {
+                    setHotspotRunning(false)
                     lastSyncedCredentials = null
                     setUiStopped()
                     stopUptimeTimer()
@@ -618,12 +641,13 @@ class HotspotFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         isFragmentResumed = true
+        HotspotRealtimeMonitor.getInstance(requireContext()).addListener(realtimeListener)
         updateWifiSource()
-        val hotspotOn = hotspotManager.isHotspotOn()
+        val hotspotOn = hotspotManager.isHotspotLikelyActive()
 
         when {
             !isHotspotActive && hotspotOn -> {
-                isHotspotActive = true
+                setHotspotRunning(true)
                 autoCheckRunnable?.let { handler.removeCallbacks(it) }
                 passwordDialogShown = false
                 lastSyncedCredentials = null
@@ -633,7 +657,7 @@ class HotspotFragment : Fragment() {
                 if (syncRunnable == null) startSyncPolling()
             }
             isHotspotActive && !hotspotOn -> {
-                isHotspotActive = false
+                setHotspotRunning(false)
                 lastSyncedCredentials = null
                 ssidConfirmPending = false
                 ssidRetryRunnable?.let { handler.removeCallbacks(it) }
@@ -654,6 +678,7 @@ class HotspotFragment : Fragment() {
 
     override fun onPause() {
         isFragmentResumed = false
+        HotspotRealtimeMonitor.getInstance(requireContext()).removeListener(realtimeListener)
         super.onPause()
     }
 

@@ -1,6 +1,8 @@
 package com.wifiextender.ui.dashboard
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,8 +14,9 @@ import com.google.android.material.snackbar.Snackbar
 import com.wifiextender.R
 import com.wifiextender.databinding.FragmentDevicesBinding
 import com.wifiextender.ui.dashboard.adapter.DeviceAdapter
+import com.wifiextender.utils.ConnectedClient
 import com.wifiextender.utils.HotspotManager
-import org.json.JSONObject
+import com.wifiextender.utils.HotspotRealtimeMonitor
 
 class DevicesFragment : Fragment() {
 
@@ -22,6 +25,16 @@ class DevicesFragment : Fragment() {
     private val viewModel: DashboardViewModel by activityViewModels()
     private lateinit var adapter: DeviceAdapter
     private lateinit var hotspotManager: HotspotManager
+    private val handler = Handler(Looper.getMainLooper())
+    private var pollRunnable: Runnable? = null
+    private var locationHintShown = false
+
+    private val clientListener: (List<ConnectedClient>) -> Unit = listener@{ clients ->
+        if (clients.isEmpty()) return@listener
+        activity?.runOnUiThread {
+            if (_binding != null) viewModel.publishLocalClients(requireContext(), clients)
+        }
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentDevicesBinding.inflate(inflater, container, false)
@@ -29,7 +42,7 @@ class DevicesFragment : Fragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        hotspotManager = HotspotManager(requireContext())
+        hotspotManager = HotspotManager.getInstance(requireContext())
 
         adapter = DeviceAdapter { device ->
             viewModel.toggleBlock(device.id)
@@ -38,16 +51,19 @@ class DevicesFragment : Fragment() {
         binding.rvDevices.adapter = adapter
 
         binding.swipeRefresh.setOnRefreshListener {
-            refreshDevices()
+            refreshDevices(force = true)
         }
 
         viewModel.devices.observe(viewLifecycleOwner) { devices ->
-            binding.swipeRefresh.isRefreshing = false
             val online = devices.filter { it.online && !it.blocked }
             adapter.submitList(devices.sortedByDescending { it.online && !it.blocked })
             binding.tvOnline.text = "Online: ${online.size}"
             binding.tvBlocked.text = "Blocked: ${devices.count { it.blocked }}"
-            binding.tvEmpty.visibility = if (online.isEmpty()) View.VISIBLE else View.GONE
+            binding.tvEmpty.visibility = if (devices.isEmpty()) View.VISIBLE else View.GONE
+        }
+
+        viewModel.deviceScanComplete.observe(viewLifecycleOwner) { done ->
+            if (done == true) binding.swipeRefresh.isRefreshing = false
         }
 
         viewModel.subscription.observe(viewLifecycleOwner) { sub ->
@@ -81,28 +97,63 @@ class DevicesFragment : Fragment() {
         }
 
         viewModel.loadHome()
-        refreshDevices()
+        refreshDevices(force = false)
     }
 
     override fun onResume() {
         super.onResume()
-        refreshDevices()
+        hotspotManager.ensureClientListeners()
+        hotspotManager.addClientListener(clientListener)
+        HotspotRealtimeMonitor.getInstance(requireContext()).addListener(clientListener)
+        refreshDevices(force = false)
+        startDevicePolling()
     }
 
-    private fun refreshDevices() {
+    override fun onPause() {
+        hotspotManager.removeClientListener(clientListener)
+        HotspotRealtimeMonitor.getInstance(requireContext()).removeListener(clientListener)
+        stopDevicePolling()
+        super.onPause()
+    }
+
+    private fun startDevicePolling() {
+        stopDevicePolling()
+        pollRunnable = object : Runnable {
+            override fun run() {
+                if (_binding != null && (hotspotManager.isHotspotLikelyActive() || viewModel.hotspotActive.value == true)) {
+                    refreshDevices(force = false)
+                }
+                handler.postDelayed(this, 8_000)
+            }
+        }
+        handler.postDelayed(pollRunnable!!, 5_000)
+    }
+
+    private fun stopDevicePolling() {
+        pollRunnable?.let { handler.removeCallbacks(it) }
+        pollRunnable = null
+    }
+
+    private fun refreshDevices(force: Boolean) {
         if (_binding == null) return
         binding.swipeRefresh.isRefreshing = true
-        if (hotspotManager.isHotspotOn()) {
+        val hotspotOn = hotspotManager.isHotspotLikelyActive() ||
+            viewModel.hotspotActive.value == true
+        if (hotspotOn) {
+            hotspotManager.userHotspotActive = true
             hotspotManager.ensurePhoneSsidListener()
             if (!hasLocationPermission()) {
                 requestLocationPermission()
-                Snackbar.make(
-                    binding.root,
-                    "Enable Location permission & turn on Location in Settings to detect hotspot devices",
-                    Snackbar.LENGTH_LONG
-                ).show()
+                if (!locationHintShown) {
+                    locationHintShown = true
+                    Snackbar.make(
+                        binding.root,
+                        "Allow Location permission for this app (Settings → Apps → WiFiExtender → Permissions).",
+                        Snackbar.LENGTH_LONG
+                    ).show()
+                }
             }
-            viewModel.scanAndReportDevices(requireContext())
+            viewModel.scanAndReportDevices(requireContext(), forceRefresh = force, showUserErrors = force)
         } else {
             viewModel.loadDevices()
             binding.swipeRefresh.isRefreshing = false
@@ -111,7 +162,7 @@ class DevicesFragment : Fragment() {
 
     private fun parseUpgradeMessage(raw: String): String {
         return try {
-            val json = JSONObject(raw)
+            val json = org.json.JSONObject(raw)
             json.optString("message", raw)
         } catch (_: Exception) {
             raw
@@ -145,5 +196,17 @@ class DevicesFragment : Fragment() {
         )
     }
 
-    override fun onDestroyView() { super.onDestroyView(); _binding = null }
+    @Deprecated("Deprecated in Java")
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 2001 && grantResults.any { it == android.content.pm.PackageManager.PERMISSION_GRANTED }) {
+            refreshDevices(force = true)
+        }
+    }
+
+    override fun onDestroyView() {
+        stopDevicePolling()
+        super.onDestroyView()
+        _binding = null
+    }
 }

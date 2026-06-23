@@ -88,7 +88,7 @@ export default function LicenseScreen() {
   }
 
   return (
-    <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 px-6">
+    <div className="h-screen flex items-center justify-center auth-page-bg px-6">
       <div className="w-full max-w-sm">
 
         {/* Header */}
@@ -99,7 +99,7 @@ export default function LicenseScreen() {
             className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-button ${
               step === 'success' ? 'bg-gradient-to-br from-emerald-500 to-teal-500'
               : step === 'error'   ? 'bg-gradient-to-br from-red-500 to-rose-500'
-              : 'bg-gradient-to-br from-brand-600 to-cyan-500'
+              : 'bg-gradient-to-br from-brand-600 to-teal-500'
             }`}
           >
             {step === 'success'    ? <CheckCircle className="w-8 h-8 text-white" />

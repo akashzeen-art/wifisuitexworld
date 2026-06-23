@@ -295,6 +295,27 @@ object DeviceNameResolver {
             )
         }
 
+        // ip=10.142.108.5 mac=0a:07:fa:05:74:04  OR  10.142.108.5  0a:07:fa:05:74:04
+        val looseRegex = Regex(
+            """(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})[^\n]{0,40}?([0-9a-f]{2}(?::[0-9a-f]{2}){5})""",
+            RegexOption.IGNORE_CASE
+        )
+        looseRegex.findAll(dump).forEach { match ->
+            val ip = match.groupValues[1]
+            val mac = match.groupValues[2].uppercase()
+            if (mac in seen || mac == "00:00:00:00:00:00") return@forEach
+            if (!isLikelyHotspotSubnetIp(ip)) return@forEach
+            seen.add(mac)
+            results.add(
+                com.wifiextender.utils.ConnectedClient(
+                    name = "",
+                    macAddress = mac,
+                    ipAddress = ip,
+                    vendor = lookupVendor(mac)
+                )
+            )
+        }
+
         return results
     }
 
@@ -305,7 +326,23 @@ object DeviceNameResolver {
         val regex = Regex("""src4:\s*/(\d{1,3}(?:\.\d{1,3}){3})""")
         regex.findAll(dump).forEach { match ->
             val ip = match.groupValues[1]
-            if (!isHotspotClientIp(ip) || ip in seen) return@forEach
+            if (!isLikelyHotspotSubnetIp(ip) || ip in seen) return@forEach
+            seen.add(ip)
+            results.add(
+                com.wifiextender.utils.ConnectedClient(
+                    name = "",
+                    macAddress = null,
+                    ipAddress = ip,
+                    vendor = null
+                )
+            )
+        }
+        // dst4:/10.142.x.x and plain private IPs on tether lines
+        val ipOnly = Regex("""(?:src4|dst4|client):\s*/(\d{1,3}(?:\.\d{1,3}){3})""")
+        ipOnly.findAll(dump).forEach { match ->
+            val ip = match.groupValues[1]
+            if (!isLikelyHotspotSubnetIp(ip) || ip in seen) return@forEach
+            if (ip.endsWith(".1")) return@forEach
             seen.add(ip)
             results.add(
                 com.wifiextender.utils.ConnectedClient(
@@ -340,10 +377,28 @@ object DeviceNameResolver {
     fun isHotspotClientIp(ip: String): Boolean {
         if (ip.isBlank()) return false
         val prefixes = listOf(
-            "10.142.", "192.168.43.", "192.168.49.", "192.168.137.", "192.168.176.",
-            "10.0.0.", "10.42.0.", "172.20.10."
+            "10.142.", "10.50.", "10.42.", "10.0.0.",
+            "192.168.43.", "192.168.49.", "192.168.137.", "192.168.176.",
+            "192.168.4.", "192.168.53.", "192.168.173.", "192.168.88.",
+            "172.20.10.", "172.16."
         )
         return prefixes.any { ip.startsWith(it) }
+    }
+
+    /** Any RFC1918 client on a typical phone hotspot subnet (excludes .1 gateway when checking clients). */
+    fun isLikelyHotspotSubnetIp(ip: String): Boolean {
+        if (ip.isBlank()) return false
+        if (isHotspotClientIp(ip)) return true
+        val parts = ip.split(".")
+        if (parts.size != 4) return false
+        val a = parts[0].toIntOrNull() ?: return false
+        val b = parts[1].toIntOrNull() ?: return false
+        return when (a) {
+            10 -> true
+            172 -> b in 16..31
+            192 -> parts[1] == "168"
+            else -> false
+        }
     }
 
     /** Parse connected clients from `dumpsys wifi` (MIUI / Android SoftAp) */
@@ -351,7 +406,7 @@ object DeviceNameResolver {
         val results = mutableListOf<com.wifiextender.utils.ConnectedClient>()
         val seen = mutableSetOf<String>()
         val macRegex = Regex("""([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}""")
-        val ipRegex = Regex("""\b(10\.142\.\d{1,3}\.\d{1,3}|192\.168\.(?:43|49|137)\.\d{1,3}|10\.(?:0\.0|42\.0)\.\d{1,3}\.\d{1,3})\b""")
+        val ipRegex = Regex("""\b(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3})\b""")
 
         dump.lineSequence().forEach { line ->
             if (!line.contains("client", ignoreCase = true) &&

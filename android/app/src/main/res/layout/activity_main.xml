@@ -18,6 +18,8 @@
         android:layout_height="wrap_content"
         android:background="@color/surface"
         app:menu="@menu/bottom_nav_menu"
+        app:itemIconTint="@color/bottom_nav_colors"
+        app:itemTextColor="@color/bottom_nav_colors"
         app:labelVisibilityMode="labeled" />
 
 </LinearLayout>

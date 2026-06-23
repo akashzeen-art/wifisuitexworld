@@ -11,8 +11,8 @@ android {
         applicationId "com.wifiextender"
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 12
+        versionName "1.2.0"
         buildConfigField "String", "BASE_URL", "\"https://wifi.suite-x.world/api/\""
     }
 

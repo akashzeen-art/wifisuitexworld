@@ -47,10 +47,6 @@
                     android:layout_width="wrap_content" android:layout_height="wrap_content"
                     android:text="WiFiExtender v1.0.0" android:textSize="14sp"
                     android:textColor="@color/text_primary" />
-                <TextView android:id="@+id/tv_backend_url"
-                    android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:text="—" android:textSize="12sp" android:textColor="@color/text_secondary"
-                    android:layout_marginTop="6dp" android:fontFamily="monospace" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

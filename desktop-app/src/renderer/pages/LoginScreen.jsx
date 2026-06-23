@@ -69,7 +69,7 @@ export default function LoginScreen() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-surface-50">
+    <div className="h-screen flex flex-col auth-page-bg">
       <TitleBar />
 
       <div className="flex-1 flex items-center justify-center px-6">
@@ -81,7 +81,7 @@ export default function LoginScreen() {
         >
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-brand-600 to-cyan-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-button">
+            <div className="w-16 h-16 bg-gradient-to-br from-brand-600 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-button">
               <Wifi className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-xl font-bold text-slate-900">WiFiExtender</h1>

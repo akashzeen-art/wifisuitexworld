@@ -14,11 +14,11 @@ function SpeedTooltip({ active, payload }) {
   if (!active || !payload?.length) return null
   return (
     <div className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 shadow-xl text-xs">
-      <div className="flex items-center gap-1.5 text-blue-400">
+      <div className="flex items-center gap-1.5 text-brand-400">
         <ArrowDownRight className="w-3 h-3" />
         {formatSpeed(payload[0]?.value || 0).value} {formatSpeed(payload[0]?.value || 0).unit}
       </div>
-      <div className="flex items-center gap-1.5 text-cyan-400 mt-0.5">
+      <div className="flex items-center gap-1.5 text-teal-400 mt-0.5">
         <ArrowUpRight className="w-3 h-3" />
         {formatSpeed(payload[1]?.value || 0).value} {formatSpeed(payload[1]?.value || 0).unit}
       </div>
@@ -75,7 +75,7 @@ export default function DashboardTab({
         animate={{ opacity: 1, y: 0 }}
         className={`relative overflow-hidden rounded-2xl p-5 text-white shadow-lg ${
           hotspotActive
-            ? 'bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600'
+            ? 'bg-gradient-to-br from-emerald-500 via-teal-500 to-teal-600'
             : 'bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900'
         }`}
       >
@@ -126,11 +126,11 @@ export default function DashboardTab({
                 <span>Live</span>
               </div>
               <div className="flex items-center gap-1 text-white/60 text-[10px] mt-1">
-                <ArrowDownRight className="w-3 h-3 text-blue-300" />
+                <ArrowDownRight className="w-3 h-3 text-brand-300" />
                 <span>{downFormatted.value} {downFormatted.unit}</span>
               </div>
               <div className="flex items-center gap-1 text-white/60 text-[10px]">
-                <ArrowUpRight className="w-3 h-3 text-cyan-300" />
+                <ArrowUpRight className="w-3 h-3 text-teal-300" />
                 <span>{upFormatted.value} {upFormatted.unit}</span>
               </div>
             </div>
@@ -144,7 +144,7 @@ export default function DashboardTab({
           label="Connected Devices"
           value={connected}
           icon={Users}
-          gradient="bg-gradient-to-br from-blue-500 to-blue-600"
+          gradient="bg-gradient-to-br from-brand-500 to-brand-600"
           sub={`of ${maxDevices} max`}
           delay={0.05}
         />
@@ -153,7 +153,7 @@ export default function DashboardTab({
           value={downFormatted.value}
           unit={downFormatted.unit}
           icon={ArrowDownRight}
-          gradient="bg-gradient-to-br from-cyan-500 to-cyan-600"
+          gradient="bg-gradient-to-br from-teal-500 to-signal-600"
           sub="per second"
           delay={0.1}
         />
@@ -177,17 +177,17 @@ export default function DashboardTab({
       >
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
+            <div className="w-7 h-7 bg-gradient-to-br from-brand-500 to-teal-500 rounded-lg flex items-center justify-center">
               <Activity className="w-3.5 h-3.5 text-white" />
             </div>
             <span className="text-sm font-bold text-slate-800">Live Network Speed</span>
           </div>
           <div className="flex items-center gap-3 text-[10px] text-slate-400">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Download
+              <span className="w-2 h-2 rounded-full bg-brand-500 inline-block" /> Download
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block" /> Upload
+              <span className="w-2 h-2 rounded-full bg-teal-400 inline-block" /> Upload
             </span>
           </div>
         </div>
@@ -232,7 +232,7 @@ export default function DashboardTab({
               Network Name (SSID)
             </label>
             <input
-              className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               value={config.ssid}
               onChange={e => setConfig(c => ({ ...c, ssid: e.target.value }))}
               disabled={hotspotActive}
@@ -247,7 +247,7 @@ export default function DashboardTab({
             <div className="relative">
               <input
                 type={showPass ? 'text' : 'password'}
-                className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all disabled:opacity-50 pr-9"
+                className="w-full px-3 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-400 transition-all disabled:opacity-50 pr-9"
                 value={config.password}
                 onChange={e => setConfig(c => ({ ...c, password: e.target.value }))}
                 disabled={hotspotActive}
@@ -287,7 +287,7 @@ export default function DashboardTab({
           className={`relative w-full flex items-center justify-center gap-3 py-3.5 rounded-xl font-bold text-sm transition-all duration-300 overflow-hidden shadow-lg ${
             hotspotActive
               ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-red-500/25 hover:shadow-red-500/40'
-              : 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-blue-500/25 hover:shadow-blue-500/40'
+              : 'bg-gradient-to-r from-brand-600 to-teal-500 text-white shadow-brand-500/25 hover:shadow-brand-500/40'
           } disabled:opacity-60 disabled:cursor-not-allowed`}
         >
           {hotspotActive && !starting && !stopping && (
