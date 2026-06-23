@@ -2,12 +2,9 @@ import { motion } from 'framer-motion'
 import { FadeUp, StaggerContainer, StaggerItem } from '../ui/Motion'
 
 const testimonials = [
-  { name: 'Sarah Chen',      role: 'Remote Developer',   avatar: 'SC', color: 'from-brand-400 to-cyan-400',    quote: 'WiFiExtender saved me at a client site with no spare router. Set it up in 30 seconds and shared my laptop connection with the whole team. Absolute lifesaver.',    rating: 5 },
-  { name: 'Marcus Webb',     role: 'Digital Nomad',      avatar: 'MW', color: 'from-violet-400 to-brand-400',  quote: 'I travel full-time and this is my go-to tool. The device blocking feature is a lifesaver in hotels and cafes. Clean UI, works perfectly every time.',           rating: 5 },
-  { name: 'Priya Sharma',    role: 'IT Manager',         avatar: 'PS', color: 'from-emerald-400 to-cyan-400',  quote: 'We use the Business plan for our field teams. The admin dashboard gives me full visibility over all connections. Excellent product, excellent support.',          rating: 5 },
-  { name: 'Tom Eriksson',    role: 'Freelance Designer', avatar: 'TE', color: 'from-amber-400 to-rose-400',    quote: 'The UI is gorgeous — feels like a premium product. Setup was instant and the bandwidth monitoring is super useful for managing my home office network.',          rating: 5 },
-  { name: 'Aisha Okonkwo',   role: 'Startup Founder',    avatar: 'AO', color: 'from-rose-400 to-violet-400',   quote: 'Replaced our old router setup entirely. The license system is clean and the dashboard is a joy to use every day. Highly recommend for any small team.',           rating: 5 },
-  { name: 'James Liu',       role: 'Software Engineer',  avatar: 'JL', color: 'from-teal-400 to-brand-400',    quote: 'Incredibly fast to set up. I was sharing my connection within a minute. The real-time device list is exactly what I needed for my home lab setup.',              rating: 5 },
+  { name: 'Sarah Chen',   role: 'Remote Developer', avatar: 'SC', color: 'from-brand-400 to-cyan-400',   quote: 'WiFiExtender saved me at a client site with no spare router. Set it up in 30 seconds and shared my laptop connection with the whole team. Absolute lifesaver.', rating: 5 },
+  { name: 'Marcus Webb',  role: 'Digital Nomad',    avatar: 'MW', color: 'from-violet-400 to-brand-400', quote: 'I travel full-time and this is my go-to tool. The device blocking feature is a lifesaver in hotels and cafes. Clean UI, works perfectly every time.',           rating: 5 },
+  { name: 'Priya Sharma', role: 'IT Manager',       avatar: 'PS', color: 'from-emerald-400 to-cyan-400', quote: 'We use the Business plan for our field teams. The admin dashboard gives me full visibility over all connections. Excellent product, excellent support.',          rating: 5 },
 ]
 
 const Stars = ({ count = 5 }) => (
@@ -34,11 +31,11 @@ export default function TestimonialsSection() {
           </p>
         </FadeUp>
 
-        <StaggerContainer className="grid md:grid-cols-2 lg:grid-cols-3 gap-5" stagger={0.08}>
+        <StaggerContainer className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto" stagger={0.08}>
           {testimonials.map((t) => (
             <StaggerItem key={t.name}>
               <motion.div
-                whileHover={{ y: -4, boxShadow: '0 20px 40px rgba(59,110,245,0.08)' }}
+                whileHover={{ y: -4, boxShadow: '0 20px 40px rgba(16,185,129,0.1)' }}
                 transition={{ duration: 0.25 }}
                 className="bg-white border border-slate-100 rounded-3xl p-6 h-full flex flex-col gap-4 shadow-card cursor-default"
               >
@@ -57,21 +54,6 @@ export default function TestimonialsSection() {
             </StaggerItem>
           ))}
         </StaggerContainer>
-
-        {/* Trust bar */}
-        <FadeUp delay={0.3} className="mt-12 flex flex-wrap items-center justify-center gap-8">
-          {[
-            { label: '4.9/5 rating',       sub: 'on Product Hunt'  },
-            { label: '#1 Tool',             sub: 'WiFi Sharing 2024' },
-            { label: '50K+ users',          sub: 'worldwide'         },
-            { label: '2M+ devices',         sub: 'managed'           },
-          ].map(item => (
-            <div key={item.label} className="text-center">
-              <p className="font-bold text-slate-900 text-sm">{item.label}</p>
-              <p className="text-xs text-slate-400">{item.sub}</p>
-            </div>
-          ))}
-        </FadeUp>
       </div>
     </section>
   )

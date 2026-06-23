@@ -6,31 +6,27 @@ import { FadeUp } from '../ui/Motion'
 const faqs = [
   {
     q: 'What is WiFiExtender and how does it work?',
-    a: 'WiFiExtender is a SaaS platform that turns your Windows laptop into a WiFi hotspot. You download our desktop app, activate your license key, and start sharing your internet connection with other devices — all managed from a beautiful web dashboard.',
+    a: 'WiFiExtender turns your Windows PC or Android phone into a WiFi hotspot. Download the app, sign in, activate your license, and share your internet — manage everything from the web dashboard.',
   },
   {
     q: 'Do I need any special hardware?',
-    a: 'No special hardware required. You just need a Windows 10 or 11 laptop with a WiFi adapter that supports hosted network mode (most modern laptops do). The app uses built-in Windows netsh commands under the hood.',
-  },
-  {
-    q: 'How many devices can connect to my hotspot?',
-    a: 'It depends on your plan. Starter allows 3 devices, Pro allows 10, and Business allows up to 25 simultaneous connections. You can upgrade your plan at any time from the dashboard.',
-  },
-  {
-    q: 'Can I block specific devices from my hotspot?',
-    a: 'Yes. From the Devices page in your dashboard or the desktop app, you can block any connected device with a single click. Blocked devices are immediately disconnected and cannot reconnect until you unblock them.',
+    a: 'No extra hardware. You need a Windows 10/11 laptop or an Android 8+ phone with hotspot support. On Windows, the app uses built-in WiFi tools — no router required.',
   },
   {
     q: 'Is my hotspot connection secure?',
-    a: 'Yes. WiFiExtender uses WPA2 encryption for your hotspot. You set your own password during configuration. We recommend using a strong, unique password for your hotspot network.',
+    a: 'Yes. Your hotspot uses WPA2 encryption with a password you choose. Use a strong password and block unknown devices from your dashboard anytime.',
   },
   {
     q: 'What happens when my subscription expires?',
-    a: 'When your subscription expires, your license key becomes invalid and the desktop app will stop allowing new hotspot sessions. Your account and data remain intact. You can renew or upgrade your plan at any time.',
+    a: 'Your license stops working and the hotspot won’t start until you renew. Your account and device history stay saved — renew anytime from the dashboard.',
   },
   {
-    q: 'Can I use WiFiExtender on multiple laptops?',
-    a: 'Each license key is tied to one active session at a time. If you need to use it on multiple machines simultaneously, you\'ll need separate subscriptions. Contact us for team or enterprise pricing.',
+    q: 'Can I use WiFiExtender on Android and Windows?',
+    a: 'Yes. Download the Android APK or Windows EXE from our Download page. Use the same account and license key on either platform.',
+  },
+  {
+    q: 'How do I manage connected devices?',
+    a: 'Open your web dashboard to see every device in real time. Block unknown devices, track bandwidth, and monitor hotspot status from any browser.',
   },
 ]
 
@@ -75,7 +71,7 @@ export default function FaqSection() {
           <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-4">
             Common <span className="gradient-text">questions</span>
           </h2>
-          <p className="text-lg text-slate-500">Everything you need to know about WiFiExtender.</p>
+          <p className="text-lg text-slate-500">Quick answers to get you started.</p>
         </FadeUp>
 
         <div className="space-y-3">

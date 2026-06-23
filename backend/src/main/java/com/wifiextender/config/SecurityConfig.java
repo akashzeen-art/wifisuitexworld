@@ -55,6 +55,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/licenses/activate", "/api/licenses/validate").authenticated()
                 // Public plan listing
                 .requestMatchers("/api/plans", "/api/plans/**", "/api/subscriptions/plans").permitAll()
+                .requestMatchers("/api/download/**").permitAll()
                 // Admin only
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // Everything else requires authentication

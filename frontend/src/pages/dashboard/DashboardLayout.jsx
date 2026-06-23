@@ -1,10 +1,12 @@
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   Wifi, LayoutDashboard, CreditCard, Monitor,
-  Download, Settings, LogOut, ChevronRight, Bell, Shield
+  Download, Settings, LogOut, ChevronRight, Shield, Radio,
 } from 'lucide-react'
 import useAuthStore from '../../store/authStore'
+import DashboardHeaderActions from '../../components/dashboard/DashboardHeaderActions'
+import { useDashboardNotifications } from '../../hooks/useDashboardNotifications'
 
 const navItems = [
   { to: '/dashboard',              icon: LayoutDashboard, label: 'Overview',     end: true },
@@ -14,32 +16,46 @@ const navItems = [
   { to: '/dashboard/settings',     icon: Settings,        label: 'Settings'             },
 ]
 
+const pageTitles = {
+  '/dashboard': 'Overview',
+  '/dashboard/devices': 'Devices',
+  '/dashboard/subscription': 'Subscription',
+  '/dashboard/download': 'Download App',
+  '/dashboard/settings': 'Settings',
+}
+
 export default function DashboardLayout() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
+  const pageTitle = pageTitles[location.pathname] || 'Dashboard'
 
   const handleLogout = () => { logout(); navigate('/') }
 
+  useDashboardNotifications()
+
   return (
-    <div className="min-h-screen bg-surface-50 flex">
-      {/* Sidebar */}
+    <div className="min-h-screen dashboard-bg flex">
       <motion.aside
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="w-64 bg-white border-r border-slate-100 flex flex-col fixed h-full z-30 shadow-[1px_0_0_rgba(0,0,0,0.03)]"
+        className="w-64 dashboard-sidebar flex flex-col fixed h-full z-30"
       >
-        {/* Logo */}
-        <div className="px-5 h-16 flex items-center border-b border-slate-100">
+        <div className="px-5 h-16 flex items-center border-b border-brand-100/50">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-cyan-500 rounded-xl flex items-center justify-center shadow-button">
+            <div className="w-9 h-9 bg-gradient-to-br from-brand-600 to-teal-500 rounded-xl flex items-center justify-center shadow-button">
               <Wifi className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-slate-900 text-[15px]">WiFiExtender</span>
+            <div>
+              <span className="font-bold text-slate-900 text-[15px] leading-tight block">WiFiExtender</span>
+              <span className="text-[10px] text-brand-600 font-medium flex items-center gap-1">
+                <Radio className="w-2.5 h-2.5" /> Network Hub
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-3 mb-2">Menu</p>
           {navItems.map(({ to, icon: Icon, label, end }) => (
@@ -62,10 +78,7 @@ export default function DashboardLayout() {
           {user?.role === 'ADMIN' && (
             <>
               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-3 mt-5 mb-2">Admin</p>
-              <button
-                onClick={() => navigate('/admin')}
-                className="nav-item w-full"
-              >
+              <button onClick={() => navigate('/admin')} className="nav-item w-full">
                 <Shield className="w-4 h-4 flex-shrink-0 text-slate-400" />
                 <span className="flex-1">Admin Panel</span>
               </button>
@@ -73,20 +86,19 @@ export default function DashboardLayout() {
           )}
         </nav>
 
-        {/* User */}
-        <div className="px-3 py-4 border-t border-slate-100">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1">
-            <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-cyan-400 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+        <div className="px-3 py-4 border-t border-brand-100/50">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-2xl mb-2 bg-gradient-to-r from-brand-50/80 to-emerald-50/50 border border-brand-100/60">
+            <div className="w-9 h-9 bg-gradient-to-br from-brand-500 to-teal-500 rounded-xl flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm">
               {user?.name?.[0]?.toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-slate-900 truncate">{user?.name}</p>
-              <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+              <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="nav-item w-full text-slate-400 hover:text-red-500 hover:bg-red-50"
+            className="nav-item w-full text-slate-500 hover:text-red-600 hover:bg-red-50/80"
           >
             <LogOut className="w-4 h-4 flex-shrink-0" />
             Sign out
@@ -94,24 +106,16 @@ export default function DashboardLayout() {
         </div>
       </motion.aside>
 
-      {/* Main content */}
       <div className="flex-1 ml-64 flex flex-col min-h-screen">
-        {/* Top bar */}
-        <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-8 sticky top-0 z-20">
-          <div />
-          <div className="flex items-center gap-3">
-            <button className="relative w-9 h-9 rounded-xl bg-slate-50 hover:bg-slate-100 flex items-center justify-center transition-colors">
-              <Bell className="w-4 h-4 text-slate-500" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-500 rounded-full border-2 border-white" />
-            </button>
-            <div className="w-9 h-9 bg-gradient-to-br from-brand-500 to-cyan-400 rounded-full flex items-center justify-center text-white text-xs font-bold">
-              {user?.name?.[0]?.toUpperCase()}
-            </div>
+        <header className="h-16 bg-white/70 backdrop-blur-xl border-b border-brand-100/50 flex items-center justify-between px-6 lg:px-8 sticky top-0 z-20">
+          <div>
+            <p className="text-[10px] font-semibold text-brand-600 uppercase tracking-wider">Dashboard</p>
+            <h2 className="text-sm font-bold text-slate-900 leading-tight">{pageTitle}</h2>
           </div>
+          <DashboardHeaderActions />
         </header>
 
-        {/* Page */}
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-6 lg:p-8">
           <motion.div
             key={location.pathname}
             initial={{ opacity: 0, y: 12 }}

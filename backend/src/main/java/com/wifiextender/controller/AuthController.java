@@ -1,8 +1,10 @@
 package com.wifiextender.controller;
 
 import com.wifiextender.dto.AuthDto;
+import com.wifiextender.dto.UserSettingsDto;
 import com.wifiextender.entity.User;
 import com.wifiextender.service.AuthService;
+import com.wifiextender.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserService userService;
 
     @Operation(summary = "Register a new user account")
     @ApiResponses({
@@ -64,5 +67,39 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<AuthDto.UserInfo> me(@AuthenticationPrincipal User user) {
         return ResponseEntity.ok(authService.me(user));
+    }
+
+    @Operation(summary = "Update profile (name and email)")
+    @PatchMapping("/me")
+    public ResponseEntity<AuthDto.UserInfo> updateProfile(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody UserSettingsDto.UpdateProfileRequest req) {
+        return ResponseEntity.ok(userService.updateProfile(user, req));
+    }
+
+    @Operation(summary = "Change password")
+    @PutMapping("/password")
+    public ResponseEntity<Void> changePassword(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody UserSettingsDto.ChangePasswordRequest req) {
+        userService.changePassword(user, req);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Update notification preferences")
+    @PatchMapping("/notifications")
+    public ResponseEntity<AuthDto.UserInfo> updateNotifications(
+            @AuthenticationPrincipal User user,
+            @RequestBody UserSettingsDto.NotificationSettings req) {
+        return ResponseEntity.ok(userService.updateNotifications(user, req));
+    }
+
+    @Operation(summary = "Permanently delete account")
+    @DeleteMapping("/account")
+    public ResponseEntity<Void> deleteAccount(
+            @AuthenticationPrincipal User user,
+            @Valid @RequestBody UserSettingsDto.DeleteAccountRequest req) {
+        userService.deleteAccount(user, req.getPassword());
+        return ResponseEntity.noContent().build();
     }
 }

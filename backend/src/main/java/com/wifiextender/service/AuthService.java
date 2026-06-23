@@ -27,6 +27,7 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder       passwordEncoder;
     private final JwtUtil               jwtUtil;
+    private final UserService           userService;
 
     // ── Register ──────────────────────────────────────────────────────────────
     @Transactional
@@ -99,8 +100,7 @@ public class AuthService {
 
     // ── Me ────────────────────────────────────────────────────────────────────
     public AuthDto.UserInfo me(User user) {
-        return new AuthDto.UserInfo(user.getId(), user.getName(), user.getEmail(),
-                user.getRole().name(), user.isActive(), user.getCreatedAt(), user.getLastLogin());
+        return userService.toUserInfo(user);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -115,9 +115,7 @@ public class AuthService {
         rt.setExpiresAt(LocalDateTime.now().plusSeconds(jwtUtil.getRefreshExpirationMs() / 1000));
         refreshTokenRepository.save(rt);
 
-        AuthDto.UserInfo userInfo = new AuthDto.UserInfo(
-                user.getId(), user.getName(), user.getEmail(), user.getRole().name(), user.isActive()
-        );
+        AuthDto.UserInfo userInfo = userService.toUserInfo(user);
         return new AuthDto.AuthResponse(accessToken, refreshToken, 900, userInfo);
     }
 

@@ -28,8 +28,12 @@ export default function LoginScreen() {
       await window.electron.store.set('token', token)
       await window.electron.store.set('user', user)
       setAuth(token, user)
-    } catch {
-      setError('Invalid email or password')
+    } catch (err) {
+      if (!err.response) {
+        setError('Cannot reach server. Start the backend (port 8017) and try again.')
+      } else {
+        setError(err.response?.data?.message || 'Invalid email or password')
+      }
     } finally {
       setLoading(false)
     }

@@ -1,56 +1,55 @@
 import { motion } from 'framer-motion'
 import { UserPlus, CreditCard, Download, Wifi, ChevronRight } from 'lucide-react'
-import { FadeUp, StaggerContainer, StaggerItem } from '../ui/Motion'
+import { FadeUp } from '../ui/Motion'
 
 const steps = [
   {
     icon: UserPlus,
     step: '01',
     title: 'Create your account',
-    desc: 'Sign up in seconds. No credit card required for the free trial. Just your email and a password.',
+    desc: 'Sign up in seconds. No credit card required for the free trial.',
     color: 'from-brand-500 to-brand-600',
     connector: true,
   },
   {
     icon: CreditCard,
     step: '02',
-    title: 'Choose a plan',
-    desc: 'Pick Starter, Pro, or Business. Get your unique license key instantly after purchase.',
-    color: 'from-cyan-500 to-cyan-600',
+    title: 'Choose your plan',
+    desc: 'One simple monthly plan with unlimited devices and instant license key.',
+    color: 'from-teal-500 to-emerald-600',
     connector: true,
   },
   {
     icon: Download,
     step: '03',
     title: 'Download the app',
-    desc: 'Download the Windows desktop app. Install it and sign in with your account credentials.',
-    color: 'from-violet-500 to-violet-600',
+    desc: 'Get WiFiExtender for Android or Windows. Install and sign in.',
+    color: 'from-emerald-500 to-teal-600',
     connector: true,
   },
   {
     icon: Wifi,
     step: '04',
     title: 'Start your hotspot',
-    desc: 'Enter your license key, set your SSID and password, and click Start. You\'re live in seconds.',
+    desc: 'Enter your license key, set SSID and password, and go live.',
     color: 'from-emerald-500 to-emerald-600',
     connector: false,
   },
 ]
 
-/* Animated step connector */
 function Connector({ delay }) {
   return (
     <div className="hidden lg:flex items-center justify-center flex-1 px-2 mt-8">
       <div className="relative w-full h-px bg-slate-200 overflow-visible">
         <motion.div
-          className="absolute inset-y-0 left-0 bg-gradient-to-r from-brand-400 to-cyan-400 h-px"
+          className="absolute inset-y-0 left-0 bg-gradient-to-r from-brand-400 to-teal-400 h-px"
           initial={{ width: 0 }}
           whileInView={{ width: '100%' }}
           viewport={{ once: true }}
           transition={{ duration: 0.8, delay, ease: 'easeInOut' }}
         />
         <motion.div
-          className="absolute top-1/2 -translate-y-1/2 right-0 w-2 h-2 rounded-full bg-cyan-400"
+          className="absolute top-1/2 -translate-y-1/2 right-0 w-2 h-2 rounded-full bg-teal-400"
           initial={{ opacity: 0, scale: 0 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
@@ -65,60 +64,61 @@ export default function HowItWorksSection() {
   return (
     <section className="section bg-surface-50">
       <div className="container-lg">
-        <FadeUp className="text-center mb-16">
+        <FadeUp className="text-center mb-10 sm:mb-16">
           <span className="badge-cyan text-xs mb-4 inline-flex">How It Works</span>
-          <h2 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-5">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight mb-5">
             Up and running in{' '}
             <span className="gradient-text">4 simple steps</span>
           </h2>
-          <p className="text-lg text-slate-500 max-w-lg mx-auto">
+          <p className="text-base sm:text-lg text-slate-500 max-w-lg mx-auto px-2">
             From sign-up to live hotspot in under 60 seconds. No technical knowledge required.
           </p>
         </FadeUp>
 
-        {/* Steps row */}
-        <div className="flex flex-col lg:flex-row items-start gap-0">
+        {/* Mobile: 2×2 grid · Desktop: horizontal row */}
+        <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:flex lg:flex-row lg:items-start lg:gap-0">
           {steps.map((step, i) => (
-            <div key={step.step} className="flex lg:flex-col items-start lg:items-center flex-1 gap-4 lg:gap-0 mb-8 lg:mb-0">
-              <StaggerItem>
+            <div
+              key={step.step}
+              className="flex flex-col lg:flex-1 lg:flex-row lg:items-start"
+            >
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                className="flex flex-col items-center text-center w-full h-full bg-white rounded-2xl border border-slate-100 p-4 sm:p-5 shadow-card lg:bg-transparent lg:border-0 lg:shadow-none lg:rounded-none lg:p-0"
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.45, delay: i * 0.08 }}
+              >
                 <motion.div
-                  whileHover={{ scale: 1.04 }}
-                  className="flex flex-col items-center text-center w-full"
+                  className={`w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br ${step.color} rounded-2xl sm:rounded-3xl flex items-center justify-center shadow-button mb-3 sm:mb-5 relative`}
                 >
-                  {/* Icon */}
-                  <motion.div
-                    className={`w-16 h-16 bg-gradient-to-br ${step.color} rounded-3xl flex items-center justify-center shadow-button mb-5 relative`}
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    whileInView={{ opacity: 1, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: i * 0.15, type: 'spring', stiffness: 200 }}
-                  >
-                    <step.icon className="w-7 h-7 text-white" />
-                    {/* Step number badge */}
-                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-white rounded-full border-2 border-slate-100 flex items-center justify-center shadow-sm">
-                      <span className="text-[10px] font-extrabold text-slate-700">{i + 1}</span>
-                    </div>
-                  </motion.div>
-
-                  <h3 className="font-bold text-slate-900 text-[15px] mb-2 px-2">{step.title}</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed px-4 max-w-[200px]">{step.desc}</p>
+                  <step.icon className="w-5 h-5 sm:w-7 sm:h-7 text-white" />
+                  <div className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 w-5 h-5 sm:w-6 sm:h-6 bg-white rounded-full border-2 border-slate-100 flex items-center justify-center shadow-sm">
+                    <span className="text-[9px] sm:text-[10px] font-extrabold text-slate-700">{i + 1}</span>
+                  </div>
                 </motion.div>
-              </StaggerItem>
 
-              {/* Connector between steps */}
+                <h3 className="font-bold text-slate-900 text-xs sm:text-[15px] mb-1.5 sm:mb-2 leading-snug px-1">
+                  {step.title}
+                </h3>
+                <p className="text-[11px] sm:text-sm text-slate-500 leading-relaxed px-0.5 sm:px-4 lg:max-w-[200px]">
+                  {step.desc}
+                </p>
+              </motion.div>
+
               {step.connector && <Connector delay={0.4 + i * 0.2} />}
             </div>
           ))}
         </div>
 
-        {/* Bottom CTA */}
-        <FadeUp delay={0.4} className="text-center mt-14">
-          <div className="inline-flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-6 py-4 shadow-card">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-sm text-slate-600">
+        <FadeUp delay={0.4} className="text-center mt-10 sm:mt-14">
+          <div className="inline-flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-5 sm:px-6 py-3.5 sm:py-4 shadow-card mx-2">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span className="text-xs sm:text-sm text-slate-600">
               Average setup time: <span className="font-bold text-slate-900">47 seconds</span>
             </span>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
+            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 hidden sm:block" />
           </div>
         </FadeUp>
       </div>

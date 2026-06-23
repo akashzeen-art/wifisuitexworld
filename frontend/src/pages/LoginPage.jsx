@@ -1,17 +1,21 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Wifi, Eye, EyeOff, ArrowRight, Mail, Lock, AlertCircle } from 'lucide-react'
+import {
+  Eye, EyeOff, ArrowRight, Mail, Lock, AlertCircle, Wifi,
+  Shield, Radio, ChevronLeft, Monitor,
+} from 'lucide-react'
 import api from '../lib/api'
 import useAuthStore from '../store/authStore'
 import { toast } from '../store/toastStore'
+import AuthLayout from '../components/auth/AuthLayout'
+import AppDownloadButtons from '../components/ui/AppDownloadButtons'
 
-// ── Field-level validation ────────────────────────────────────────────────────
 function validate(form) {
   const errors = {}
-  if (!form.email.trim())                          errors.email    = 'Email is required'
+  if (!form.email.trim()) errors.email = 'Email is required'
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = 'Enter a valid email address'
-  if (!form.password)                              errors.password = 'Password is required'
+  if (!form.password) errors.password = 'Password is required'
   return errors
 }
 
@@ -28,17 +32,25 @@ function FieldError({ msg }) {
   )
 }
 
+const perks = [
+  { icon: Monitor, label: 'Live devices' },
+  { icon: Radio, label: 'Hotspot control' },
+  { icon: Shield, label: 'WPA2 secure' },
+]
+
 export default function LoginPage() {
-  const [form,     setForm]     = useState({ email: '', password: '' })
-  const [errors,   setErrors]   = useState({})
+  const [form, setForm] = useState({ email: '', password: '' })
+  const [errors, setErrors] = useState({})
   const [showPass, setShowPass] = useState(false)
-  const [loading,  setLoading]  = useState(false)
-  const login    = useAuthStore(s => s.login)
+  const [remember, setRemember] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const login = useAuthStore(s => s.login)
   const navigate = useNavigate()
 
   const set = (field) => (e) => {
     setForm(f => ({ ...f, [field]: e.target.value }))
     if (errors[field]) setErrors(er => ({ ...er, [field]: '' }))
+    if (errors.form) setErrors(er => ({ ...er, form: '' }))
   }
 
   const handleSubmit = async (e) => {
@@ -48,7 +60,6 @@ export default function LoginPage() {
 
     setLoading(true)
     const loadingId = toast.loading('Signing you in…')
-
     try {
       const { data } = await api.post('/auth/login', form)
       toast.dismiss(loadingId)
@@ -66,145 +77,153 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-hero-gradient flex">
-      {/* ── Left panel ── */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-brand-600 via-brand-700 to-cyan-700 items-center justify-center p-12">
-        <div className="absolute inset-0 bg-dots opacity-10" />
-        <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-56 h-56 bg-cyan-300/15 rounded-full blur-2xl" />
+    <AuthLayout
+      hero={{
+        badge: 'Secure dashboard access',
+        titlePrefix: 'Manage your',
+        titleHighlight: 'WiFi network',
+        titleSuffix: ' from anywhere.',
+        subtitle: 'Sign in to monitor connected devices, control your hotspot, and track bandwidth in real time.',
+        visualMode: 'login',
+      }}
+    >
+      <Link
+        to="/"
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-brand-600 transition-colors mb-3"
+      >
+        <ChevronLeft className="w-3 h-3" /> Back to home
+      </Link>
 
-        <div className="relative text-white max-w-sm z-10">
-          <Link to="/" className="flex items-center gap-2.5 mb-10">
-            <div className="w-10 h-10 bg-white/15 rounded-2xl flex items-center justify-center border border-white/20">
-              <Wifi className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-xl">WiFiExtender</span>
-          </Link>
-          <h2 className="text-3xl font-extrabold mb-4 leading-tight">
-            Share your internet with anyone, anywhere
-          </h2>
-          <p className="text-blue-100 leading-relaxed mb-10">
-            Manage your hotspot, monitor devices, and control bandwidth — all from one beautiful dashboard.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: 'Active users',   value: '50K+' },
-              { label: 'Uptime',         value: '99.9%' },
-              { label: 'Devices managed',value: '2M+' },
-              { label: 'Avg setup',      value: '<60s' },
-            ].map(s => (
-              <div key={s.label} className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
-                <p className="text-xl font-bold">{s.value}</p>
-                <p className="text-xs text-blue-200 mt-0.5">{s.label}</p>
-              </div>
-            ))}
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-600 to-teal-500 flex items-center justify-center shadow-button shrink-0">
+            <Wifi className="w-4 h-4 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-lg font-extrabold text-slate-900 tracking-tight leading-tight">Sign in</h1>
+            <p className="text-xs text-slate-500">WiFiExtender dashboard</p>
           </div>
         </div>
+        <span className="badge-green text-[9px] px-2 py-0.5 shrink-0 hidden sm:inline-flex">
+          <span className="status-dot-green" /> Encrypted
+        </span>
       </div>
 
-      {/* ── Right panel ── */}
-      <div className="flex-1 flex items-center justify-center px-6 py-12">
+      <div className="flex flex-wrap justify-center gap-1.5 mb-4">
+        {perks.map(({ icon: Icon, label }) => (
+          <span
+            key={label}
+            className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-brand-50/80 border border-brand-100/60 px-2 py-1 rounded-full"
+          >
+            <Icon className="w-3 h-3 text-brand-600" />
+            {label}
+          </span>
+        ))}
+      </div>
+
+      {errors.form && (
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
+          initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="w-full max-w-md"
+          className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-xs px-3 py-2 rounded-xl mb-3"
         >
-          {/* Mobile logo */}
-          <Link to="/" className="inline-flex items-center gap-2.5 mb-10 lg:hidden">
-            <div className="w-9 h-9 bg-gradient-to-br from-brand-600 to-cyan-500 rounded-xl flex items-center justify-center shadow-button">
-              <Wifi className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-slate-900 text-lg">WiFiExtender</span>
-          </Link>
-
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-1">Welcome back</h1>
-          <p className="text-slate-500 mb-8">Sign in to your account to continue</p>
-
-          {/* Form-level error */}
-          {errors.form && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2.5 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-2xl mb-6"
-            >
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              {errors.form}
-            </motion.div>
-          )}
-
-          <form onSubmit={handleSubmit} noValidate className="space-y-5">
-            {/* Email */}
-            <div>
-              <label className="input-label">Email address</label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                <input
-                  type="email"
-                  className={`input pl-10 ${errors.email ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20' : ''}`}
-                  placeholder="you@example.com"
-                  value={form.email}
-                  onChange={set('email')}
-                  autoComplete="email"
-                />
-              </div>
-              <FieldError msg={errors.email} />
-            </div>
-
-            {/* Password */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="input-label mb-0">Password</label>
-                <a href="#" className="text-xs text-brand-600 hover:underline font-medium">Forgot password?</a>
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  className={`input pl-10 pr-11 ${errors.password ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20' : ''}`}
-                  placeholder="••••••••"
-                  value={form.password}
-                  onChange={set('password')}
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPass(v => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              <FieldError msg={errors.password} />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full py-3.5 text-[15px] mt-2"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                  </svg>
-                  Signing in…
-                </span>
-              ) : (
-                <>Sign in <ArrowRight className="w-4 h-4" /></>
-              )}
-            </button>
-          </form>
-
-          <p className="text-center text-sm text-slate-500 mt-8">
-            Don't have an account?{' '}
-            <Link to="/register" className="text-brand-600 font-semibold hover:underline">
-              Create one free
-            </Link>
-          </p>
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <span>{errors.form}</span>
         </motion.div>
+      )}
+
+      <form onSubmit={handleSubmit} noValidate className="space-y-3">
+        <div>
+          <label htmlFor="login-email" className="input-label text-xs mb-1">Email address</label>
+          <div className="relative group">
+            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-brand-500 transition-colors pointer-events-none" />
+            <input
+              id="login-email"
+              type="email"
+              autoFocus
+              className={`input pl-9 py-2 text-sm ${errors.email ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20' : 'focus:border-brand-400'}`}
+              placeholder="you@example.com"
+              value={form.email}
+              onChange={set('email')}
+              autoComplete="email"
+            />
+          </div>
+          <FieldError msg={errors.email} />
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label htmlFor="login-password" className="input-label text-xs mb-0">Password</label>
+            <span className="text-[10px] text-slate-400">Min. 6 characters</span>
+          </div>
+          <div className="relative group">
+            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 group-focus-within:text-brand-500 transition-colors pointer-events-none" />
+            <input
+              id="login-password"
+              type={showPass ? 'text' : 'password'}
+              className={`input pl-9 pr-10 py-2 text-sm ${errors.password ? 'border-red-300 focus:border-red-400 focus:ring-red-500/20' : 'focus:border-brand-400'}`}
+              placeholder="Enter your password"
+              value={form.password}
+              onChange={set('password')}
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPass(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              aria-label={showPass ? 'Hide password' : 'Show password'}
+            >
+              {showPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+          <FieldError msg={errors.password} />
+        </div>
+
+        <label className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => setRemember(e.target.checked)}
+            className="w-3.5 h-3.5 rounded border-slate-300 text-brand-600 focus:ring-brand-400/40"
+          />
+          Keep me signed in
+        </label>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="btn-primary btn-shine w-full py-2.5 text-sm font-semibold"
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+              Signing in…
+            </span>
+          ) : (
+            <>
+              Sign in
+              <ArrowRight className="w-3.5 h-3.5" />
+            </>
+          )}
+        </button>
+      </form>
+
+      <p className="text-center text-xs text-slate-500 mt-4">
+        New to WiFiExtender?{' '}
+        <Link to="/register" className="text-brand-700 font-semibold hover:text-brand-800 hover:underline">
+          Create free account
+        </Link>
+      </p>
+
+      <div className="mt-4 pt-3 border-t border-slate-100">
+        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider text-center mb-2">
+          Download the app
+        </p>
+        <AppDownloadButtons layout="row" variant="compact" />
       </div>
-    </div>
+    </AuthLayout>
   )
 }

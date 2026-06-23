@@ -64,4 +64,9 @@ public interface ConnectedDeviceRepository extends JpaRepository<ConnectedDevice
 
     @Query("SELECT u FROM User u WHERE EXISTS (SELECT h FROM Hotspot h WHERE h.user = u AND h.status = 'ACTIVE')")
     List<com.wifiextender.entity.User> findUsersWithActiveHotspot();
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM ConnectedDevice d WHERE d.user.id = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
 }

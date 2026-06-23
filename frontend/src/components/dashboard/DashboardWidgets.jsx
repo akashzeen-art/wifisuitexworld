@@ -1,12 +1,27 @@
 import { motion } from 'framer-motion'
 
+export function PageHeader({ badge, title, subtitle, action }) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+      <div>
+        {badge && (
+          <p className="text-[10px] font-semibold text-brand-600 uppercase tracking-wider mb-1">{badge}</p>
+        )}
+        <h1 className="dash-page-title">{title}</h1>
+        {subtitle && <p className="dash-page-sub">{subtitle}</p>}
+      </div>
+      {action}
+    </div>
+  )
+}
+
 export function StatCard({ icon: Icon, label, value, sub, color, delay = 0, onClick, badge }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, delay, ease: [0.22, 1, 0.36, 1] }}
-      whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(59,110,245,0.10)' }}
+      whileHover={{ y: -2, boxShadow: '0 12px 32px rgba(16,185,129,0.12)' }}
       onClick={onClick}
       className={`glass-card p-5 flex flex-col gap-3 ${onClick ? 'cursor-pointer' : ''}`}
     >
@@ -50,7 +65,7 @@ export function SectionHeader({ title, sub, action }) {
   )
 }
 
-export function ProgressBar({ value, max, color = 'from-brand-500 to-cyan-400', label, showPct = true }) {
+export function ProgressBar({ value, max, color = 'from-brand-500 to-teal-400', label, showPct = true }) {
   const pct    = max > 0 ? Math.min(100, (value / max) * 100) : 0
   const urgent = pct >= 85
   return (
@@ -92,7 +107,7 @@ export function LiveDot({ active = true }) {
   )
 }
 
-export function SpeedArc({ value, max, label, unit, color = '#3b6ef5' }) {
+export function SpeedArc({ value, max, label, unit, color = '#10b981' }) {
   const pct    = Math.min(1, (value || 0) / max)
   const circ   = Math.PI * 52
   const offset = circ * (1 - pct)

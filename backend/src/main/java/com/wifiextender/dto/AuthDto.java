@@ -66,6 +66,10 @@ public class AuthDto {
         private boolean active;
         private java.time.LocalDateTime createdAt;
         private java.time.LocalDateTime lastLogin;
+        private boolean notifyDeviceConnect = true;
+        private boolean notifyDeviceBlock = true;
+        private boolean notifyLicenseExpiry = true;
+        private boolean notifyNewsletter = false;
 
         public UserInfo(Long id, String name, String email, String role, boolean active) {
             this.id     = id;

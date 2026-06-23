@@ -12,7 +12,7 @@ import CtaSection from '../components/landing/CtaSection'
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-emerald-50/30 via-white to-slate-50 overflow-x-hidden">
       <Navbar />
       <HeroSection />
       <StatsSection />

@@ -30,4 +30,9 @@ public interface HotspotRepository extends JpaRepository<Hotspot, Long> {
     @Transactional
     @Query("UPDATE Hotspot h SET h.totalBytesUp = h.totalBytesUp + :up, h.totalBytesDown = h.totalBytesDown + :down WHERE h.id = :id")
     void addBandwidth(@Param("id") Long id, @Param("up") Long up, @Param("down") Long down);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Hotspot h WHERE h.user.id = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
 }

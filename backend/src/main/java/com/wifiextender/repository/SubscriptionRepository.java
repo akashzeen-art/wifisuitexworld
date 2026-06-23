@@ -55,4 +55,9 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     @Query("SELECT COUNT(s) FROM Subscription s WHERE s.user.id = :userId AND s.status = 'ACTIVE'")
     long countActiveByUserId(@Param("userId") Long userId);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM Subscription s WHERE s.user.id = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
 }

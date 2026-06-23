@@ -66,7 +66,7 @@ export default function AnalyticsSection() {
                       <span className="w-2.5 h-2.5 rounded-full bg-brand-500 inline-block" /> Download
                     </span>
                     <span className="flex items-center gap-1.5 text-slate-500">
-                      <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block" /> Upload
+                      <span className="w-2.5 h-2.5 rounded-full bg-teal-400 inline-block" /> Upload
                     </span>
                   </div>
                 </div>
@@ -74,20 +74,20 @@ export default function AnalyticsSection() {
                   <AreaChart data={bandwidthData} margin={{ top: 0, right: 0, left: -24, bottom: 0 }}>
                     <defs>
                       <linearGradient id="gDown" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor="#3b6ef5" stopOpacity={0.18} />
-                        <stop offset="95%" stopColor="#3b6ef5" stopOpacity={0}    />
+                        <stop offset="5%"  stopColor="#10b981" stopOpacity={0.18} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}    />
                       </linearGradient>
                       <linearGradient id="gUp" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%"  stopColor="#06b6d4" stopOpacity={0.18} />
-                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}    />
+                        <stop offset="5%"  stopColor="#14b8a6" stopOpacity={0.18} />
+                        <stop offset="95%" stopColor="#14b8a6" stopOpacity={0}    />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                     <XAxis dataKey="time" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} interval={2} />
                     <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                     <Tooltip content={<CustomTooltip />} />
-                    <Area type="monotone" dataKey="down" stroke="#3b6ef5" strokeWidth={2} fill="url(#gDown)" dot={false} />
-                    <Area type="monotone" dataKey="up"   stroke="#06b6d4" strokeWidth={2} fill="url(#gUp)"   dot={false} />
+                    <Area type="monotone" dataKey="down" stroke="#10b981" strokeWidth={2} fill="url(#gDown)" dot={false} />
+                    <Area type="monotone" dataKey="up"   stroke="#14b8a6" strokeWidth={2} fill="url(#gUp)"   dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -113,8 +113,8 @@ export default function AnalyticsSection() {
                     <Bar dataKey="usage" fill="url(#barGrad)" radius={[6, 6, 0, 0]} />
                     <defs>
                       <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%"   stopColor="#3b6ef5" />
-                        <stop offset="100%" stopColor="#06b6d4" />
+                        <stop offset="0%"   stopColor="#10b981" />
+                        <stop offset="100%" stopColor="#14b8a6" />
                       </linearGradient>
                     </defs>
                   </BarChart>
@@ -125,8 +125,8 @@ export default function AnalyticsSection() {
               <div className="grid grid-cols-3 gap-3">
                 {[
                   { label: 'Peak Speed',   value: '94.2 Mbps', icon: ArrowDownRight, color: 'text-brand-600',   bg: 'bg-brand-50'   },
-                  { label: 'Avg Upload',   value: '24.8 Mbps', icon: ArrowUpRight,   color: 'text-cyan-600',    bg: 'bg-cyan-50'    },
-                  { label: 'Total Today',  value: '18.4 GB',   icon: Activity,       color: 'text-violet-600',  bg: 'bg-violet-50'  },
+                  { label: 'Avg Upload',   value: '24.8 Mbps', icon: ArrowUpRight,   color: 'text-teal-600',    bg: 'bg-teal-50'    },
+                  { label: 'Total Today',  value: '18.4 GB',   icon: Activity,       color: 'text-emerald-600',  bg: 'bg-emerald-50'  },
                 ].map(s => (
                   <div key={s.label} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-card">
                     <div className={`w-7 h-7 ${s.bg} rounded-lg flex items-center justify-center mb-2`}>
@@ -154,8 +154,8 @@ export default function AnalyticsSection() {
             <div className="space-y-5">
               {[
                 { title: 'Real-time bandwidth charts',  desc: 'Live area charts update every few seconds with download and upload speeds.',       color: 'from-brand-500 to-brand-600'   },
-                { title: 'Per-device breakdown',        desc: 'See exactly how much data each connected device is consuming.',                    color: 'from-cyan-500 to-cyan-600'     },
-                { title: '24-hour history',             desc: 'Review bandwidth patterns over the last 24 hours to spot usage spikes.',          color: 'from-violet-500 to-violet-600' },
+                { title: 'Per-device breakdown',        desc: 'See exactly how much data each connected device is consuming.',                    color: 'from-teal-500 to-emerald-600'     },
+                { title: '24-hour history',             desc: 'Review bandwidth patterns over the last 24 hours to spot usage spikes.',          color: 'from-emerald-500 to-teal-600' },
               ].map(({ title, desc, color }) => (
                 <motion.div
                   key={title}
@@ -173,7 +173,7 @@ export default function AnalyticsSection() {
 
             <motion.div
               whileHover={{ scale: 1.02 }}
-              className="mt-8 inline-flex items-center gap-3 bg-gradient-to-r from-brand-50 to-cyan-50 border border-brand-100 rounded-2xl px-5 py-4"
+              className="mt-8 inline-flex items-center gap-3 bg-gradient-to-r from-brand-50 to-teal-50 border border-brand-100 rounded-2xl px-5 py-4"
             >
               <TrendingUp className="w-5 h-5 text-brand-600" />
               <div>

@@ -1,24 +1,102 @@
-# Maven
-backend/target/
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Node
-frontend/node_modules/
-desktop-app/node_modules/
-node_modules/
-
-# Desktop app build artifacts (large binaries)
-desktop-app/dist/
-
-# Android
-android/.gradle/
-android/local.properties
-android/app/build/
-android/build/
-
-# Env / secrets
-*.env
-application-temp.properties
-
-# IDE
+# ── IDE / editors ─────────────────────────────────────────────────────────────
 .idea/
 *.iml
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ── Logs & temp ───────────────────────────────────────────────────────────────
+*.log
+nohup.out
+logs/
+tmp/
+temp/
+*.tmp
+*.pid
+*.seed
+
+# ── Environment & secrets (never commit real passwords/keys) ─────────────────
+.env
+.env.*
+!.env.example
+*.env.local
+application-local.properties
+application-temp.properties
+application-prod.properties
+**/secrets/
+**/credentials.json
+
+# ── Java / Spring Boot ────────────────────────────────────────────────────────
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+!backend/mvnw
+!backend/mvnw.cmd
+
+# ── Node.js ───────────────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+frontend/node_modules/
+desktop-app/node_modules/
+android/node_modules/
+
+# Vite / frontend build output (build on server with npm run build)
+frontend/dist/
+desktop-app/dist/
+
+# ── Download binaries (build locally or on server; do not commit large files) ─
+*.apk
+*.aab
+*.exe
+*.msi
+*.dmg
+frontend/public/downloads/*
+!frontend/public/downloads/.gitkeep
+backend/downloads/
+downloads/*.apk
+downloads/*.exe
+
+# ── Android ───────────────────────────────────────────────────────────────────
+android/.gradle/
+android/local.properties
+android/.cxx/
+android/app/build/
+android/build/
+android/captures/
+android/*.iml
+android/.externalNativeBuild/
+android/.kotlin/
+
+# ── Desktop (Electron) ────────────────────────────────────────────────────────
+desktop-app/out/
+desktop-app/release/
+
+# ── Test / coverage ───────────────────────────────────────────────────────────
+coverage/
+.nyc_output/
+*.lcov
+test-results/
+playwright-report/
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+.cache/
+.parcel-cache/
+.turbo/
+*.orig

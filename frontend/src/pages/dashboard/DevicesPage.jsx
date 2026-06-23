@@ -77,12 +77,14 @@ function SignalBars({ strength }) {
 // ── New device toast notification ─────────────────────────────────────────────
 function useEventNotifications() {
   return useCallback((event) => {
+    const name = event.device?.deviceName || 'Device'
+
     if (event.type === 'CONNECTED') {
-      toast.info(`📱 ${event.device?.deviceName || 'New device'} connected`)
+      toast.info(`${name} connected`)
     } else if (event.type === 'BLOCKED') {
-      toast.warning(`🚫 ${event.device?.deviceName || 'Device'} blocked`)
+      toast.warning(`${name} blocked`)
     } else if (event.type === 'DISCONNECTED') {
-      toast.info(`📴 ${event.device?.deviceName || 'Device'} disconnected`)
+      toast.info(`${name} disconnected`)
     }
   }, [])
 }

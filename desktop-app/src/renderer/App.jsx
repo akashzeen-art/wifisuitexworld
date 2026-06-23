@@ -38,6 +38,14 @@ export default function App() {
 
         const settings = await window.electron.settings.get()
         const autoLogin = settings?.autoLogin !== false
+        if (settings?.apiUrl) {
+          // Migrate old default — backend runs on 8017, not 8080
+          if (settings.apiUrl === 'http://localhost:8080') {
+            settings.apiUrl = 'http://localhost:8017'
+            await window.electron.settings.save(settings)
+          }
+          window.__apiUrl = settings.apiUrl
+        }
 
         if (autoLogin && savedToken && savedUser) {
           window.__token = savedToken

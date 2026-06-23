@@ -221,7 +221,7 @@ export default function PaymentPage() {
               className="bg-white rounded-3xl shadow-glass-lg border border-slate-100 overflow-hidden"
             >
               {/* Plan summary */}
-              <div className="bg-gradient-to-r from-brand-600 to-cyan-500 p-6 text-white">
+              <div className="bg-gradient-to-r from-brand-600 to-signal-500 p-6 text-white">
                 <p className="text-sm font-medium text-blue-100 mb-1">You're subscribing to</p>
                 <h2 className="text-2xl font-extrabold">{plan.name}</h2>
                 <div className="flex items-baseline gap-1 mt-2">

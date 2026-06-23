@@ -1,10 +1,20 @@
 import axios from 'axios'
 
-const API_BASE = 'http://localhost:8080/api'
+const DEFAULT_API_ORIGIN = 'http://localhost:8017'
 
-const api = axios.create({ baseURL: API_BASE })
+const getBase = () => {
+  try {
+    const stored = window.__apiUrl
+    return (stored || DEFAULT_API_ORIGIN) + '/api'
+  } catch {
+    return `${DEFAULT_API_ORIGIN}/api`
+  }
+}
+
+const api = axios.create({ baseURL: `${DEFAULT_API_ORIGIN}/api` })
 
 api.interceptors.request.use(config => {
+  config.baseURL = getBase()
   const token = window.__token
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config

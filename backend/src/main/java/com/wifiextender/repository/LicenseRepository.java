@@ -45,4 +45,9 @@ public interface LicenseRepository extends JpaRepository<License, Long> {
 
     @Query("SELECT COUNT(l) FROM License l WHERE l.machineId IS NOT NULL")
     long countActivated();
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM License l WHERE l.user.id = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
 }

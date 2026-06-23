@@ -39,7 +39,7 @@ export default function AdminLayout() {
         {/* Logo */}
         <div className="px-5 h-16 flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-cyan-500 rounded-xl flex items-center justify-center shadow-button">
+            <div className="w-8 h-8 bg-gradient-to-br from-brand-600 to-signal-500 rounded-xl flex items-center justify-center shadow-button">
               <Wifi className="w-4 h-4 text-white" />
             </div>
             <div>

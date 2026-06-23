@@ -53,6 +53,18 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "notify_device_connect", nullable = false)
+    private boolean notifyDeviceConnect = true;
+
+    @Column(name = "notify_device_block", nullable = false)
+    private boolean notifyDeviceBlock = true;
+
+    @Column(name = "notify_license_expiry", nullable = false)
+    private boolean notifyLicenseExpiry = true;
+
+    @Column(name = "notify_newsletter", nullable = false)
+    private boolean notifyNewsletter = false;
+
     @PrePersist
     void prePersist() {
         createdAt = LocalDateTime.now();

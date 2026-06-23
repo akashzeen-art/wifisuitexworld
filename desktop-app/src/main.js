@@ -447,12 +447,20 @@ ipcMain.handle('extender:save', (_, config) => {
 })
 
 // ── IPC: Settings ─────────────────────────────────────────────────────────────
-ipcMain.handle('settings:get', () => store.get('settings') || {
-  autoStart:       false,
-  minimizeToTray:  true,
-  autoLogin:       true,
-  refreshInterval: 8,
-  apiUrl:          'http://localhost:8080',
+ipcMain.handle('settings:get', () => {
+  const defaults = {
+    autoStart:       false,
+    minimizeToTray:  true,
+    autoLogin:       true,
+    refreshInterval: 8,
+    apiUrl:          'http://localhost:8017',
+  }
+  const settings = store.get('settings') || defaults
+  if (settings.apiUrl === 'http://localhost:8080') {
+    settings.apiUrl = 'http://localhost:8017'
+    store.set('settings', settings)
+  }
+  return settings
 })
 ipcMain.handle('settings:save', (_, settings) => {
   store.set('settings', settings)

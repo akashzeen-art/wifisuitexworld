@@ -2,8 +2,10 @@ package com.wifiextender.repository;
 
 import com.wifiextender.entity.BandwidthUsage;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,4 +36,9 @@ public interface BandwidthUsageRepository extends JpaRepository<BandwidthUsage, 
     List<Object[]> hourlyByUserId(@Param("userId") Long userId, @Param("from") LocalDateTime from);
 
     void deleteByRecordedAtBefore(LocalDateTime cutoff);
+
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM BandwidthUsage b WHERE b.user.id = :userId")
+    void deleteByUserId(@Param("userId") Long userId);
 }
