@@ -1,21 +1,50 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Wifi, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react'
+import { Wifi, Eye, EyeOff, ArrowRight, AlertCircle, Server } from 'lucide-react'
 import api from '../lib/api'
 import useAppStore from '../store/appStore'
 import TitleBar from '../components/TitleBar'
 
+const DEFAULT_API_ORIGIN = 'https://wifi.suite-x.world'
+
 export default function LoginScreen() {
-  const [form,     setForm]     = useState({ email: '', password: '' })
+  const [form, setForm] = useState({ email: '', password: '' })
+  const [apiUrl, setApiUrl] = useState(DEFAULT_API_ORIGIN)
   const [showPass, setShowPass] = useState(false)
-  const [error,    setError]    = useState('')
-  const [loading,  setLoading]  = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const setAuth = useAppStore(s => s.setAuth)
+
+  useEffect(() => {
+    window.electron.settings.get().then((settings) => {
+      const url = settings?.apiUrl || DEFAULT_API_ORIGIN
+      const migrated =
+        url === 'http://localhost:8080' || url === 'http://localhost:8017' || url === 'http://localhost:8018'
+          ? DEFAULT_API_ORIGIN
+          : url
+      setApiUrl(migrated)
+      window.__apiUrl = migrated
+    }).catch(() => {
+      window.__apiUrl = DEFAULT_API_ORIGIN
+    })
+  }, [])
+
+  const saveApiUrl = async (url) => {
+    const trimmed = url.trim().replace(/\/api\/?$/, '').replace(/\/$/, '')
+    window.__apiUrl = trimmed || DEFAULT_API_ORIGIN
+    try {
+      const settings = await window.electron.settings.get()
+      await window.electron.settings.save({ ...settings, apiUrl: window.__apiUrl })
+    } catch {
+      // settings unavailable — in-memory URL still used for this session
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
+    await saveApiUrl(apiUrl)
     try {
       const { data } = await api.post('/auth/login', form)
       const user = {
@@ -73,6 +102,21 @@ export default function LoginScreen() {
 
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Server URL</label>
+                <div className="relative">
+                  <Server className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                  <input
+                    type="url"
+                    className="input-field pl-9"
+                    placeholder="https://wifi.suite-x.world"
+                    value={apiUrl}
+                    onChange={e => setApiUrl(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Email</label>
                 <input
                   type="email"
@@ -125,7 +169,9 @@ export default function LoginScreen() {
 
           <p className="text-center text-xs text-slate-400 mt-4">
             Need an account?{' '}
-            <span className="text-brand-600 font-medium">Visit app.wifiextender.com</span>
+            <a href="https://wifi.suite-x.world/register" className="text-brand-600 font-medium hover:underline">
+              Register at wifi.suite-x.world
+            </a>
           </p>
         </motion.div>
       </div>

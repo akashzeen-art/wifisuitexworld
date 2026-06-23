@@ -456,7 +456,7 @@ ipcMain.handle('settings:get', () => {
     apiUrl:          'https://wifi.suite-x.world',
   }
   const settings = store.get('settings') || defaults
-  if (settings.apiUrl === 'http://localhost:8080' || settings.apiUrl === 'http://localhost:8017') {
+  if (settings.apiUrl === 'http://localhost:8080' || settings.apiUrl === 'http://localhost:8017' || settings.apiUrl === 'http://localhost:8018') {
     settings.apiUrl = 'https://wifi.suite-x.world'
     store.set('settings', settings)
   }
