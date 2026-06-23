@@ -5,8 +5,9 @@ const api = axios.create({ baseURL: '/api' })
 
 // ── Request: attach access token ─────────────────────────────────────────────
 api.interceptors.request.use(config => {
+  const isAuthRoute = config.url?.includes('/auth/login') || config.url?.includes('/auth/register')
   const token = useAuthStore.getState().token
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  if (token && !isAuthRoute) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
