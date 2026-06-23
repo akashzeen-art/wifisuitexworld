@@ -46,7 +46,7 @@ export default function SettingsTab({ licenseKey, licenseData }) {
     minimizeToTray:  true,
     autoLogin:       true,
     refreshInterval: 8,
-    apiUrl:          'http://localhost:8017',
+    apiUrl:          'https://wifi.suite-x.world',
   })
   const [saved,   setSaved]   = useState(false)
   const [loading, setLoading] = useState(true)
@@ -129,7 +129,7 @@ export default function SettingsTab({ licenseKey, licenseData }) {
             className="input-field text-xs py-1.5 w-48"
             value={settings.apiUrl}
             onChange={e => set('apiUrl')(e.target.value)}
-            placeholder="http://localhost:8017"
+            placeholder="https://wifi.suite-x.world"
           />
         </Row>
       </Section>

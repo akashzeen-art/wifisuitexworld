@@ -40,8 +40,8 @@ export default function App() {
         const autoLogin = settings?.autoLogin !== false
         if (settings?.apiUrl) {
           // Migrate old default — backend runs on 8017, not 8080
-          if (settings.apiUrl === 'http://localhost:8080') {
-            settings.apiUrl = 'http://localhost:8017'
+          if (settings.apiUrl === 'http://localhost:8080' || settings.apiUrl === 'http://localhost:8017') {
+            settings.apiUrl = 'https://wifi.suite-x.world'
             await window.electron.settings.save(settings)
           }
           window.__apiUrl = settings.apiUrl

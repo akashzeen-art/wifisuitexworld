@@ -30,7 +30,7 @@ export default function LoginScreen() {
       setAuth(token, user)
     } catch (err) {
       if (!err.response) {
-        setError('Cannot reach server. Start the backend (port 8017) and try again.')
+        setError('Cannot reach server. Check API URL in Settings (use https://wifi.suite-x.world).')
       } else {
         setError(err.response?.data?.message || 'Invalid email or password')
       }

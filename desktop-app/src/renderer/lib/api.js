@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const DEFAULT_API_ORIGIN = 'http://localhost:8017'
+const DEFAULT_API_ORIGIN = 'https://wifi.suite-x.world'
 
 const getBase = () => {
   try {
