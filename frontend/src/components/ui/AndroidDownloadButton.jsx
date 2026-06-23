@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Smartphone, ArrowDown } from 'lucide-react'
 import { downloadAndroidApk } from '../../lib/download'
+import { getAndroidVersionLabel } from '../../lib/appVersions'
+import { useAppVersions } from '../../hooks/useAppVersions'
 import { toast } from '../../store/toastStore'
 
 const VARIANT_CLASS = {
@@ -16,6 +18,8 @@ export default function AndroidDownloadButton({
   children,
 }) {
   const [loading, setLoading] = useState(false)
+  const { releases } = useAppVersions()
+  const versionLabel = getAndroidVersionLabel(releases)
   const baseClass = className ?? VARIANT_CLASS[variant] ?? VARIANT_CLASS.card
 
   const handleClick = async (e) => {
@@ -85,7 +89,7 @@ export default function AndroidDownloadButton({
           )}
         </p>
         <p className={`text-[10px] sm:text-xs truncate ${isHero ? 'text-slate-500' : 'text-slate-500'}`}>
-          WiFiExtender.apk · Android 8+
+          WiFiExtender.apk · {versionLabel}
         </p>
       </div>
 

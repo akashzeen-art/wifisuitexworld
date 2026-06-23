@@ -92,20 +92,77 @@ class DashboardViewModel : ViewModel() {
     fun loadHome() {
         _loading.value = true
         viewModelScope.launch {
+            var partialFailure = false
             try {
-                val subResp   = api.getActiveSubscription()
-                val licResp   = api.getLicenses()
-                val statsResp = api.getDeviceStats()
-                if (subResp.isSuccessful)   _subscription.value = subResp.body()
-                else _subscription.value = null
-                if (licResp.isSuccessful)   _licenses.value = licResp.body() ?: emptyList()
-                if (statsResp.isSuccessful) _deviceStats.value = statsResp.body()
-            } catch (e: Exception) {
-                _error.value = "Failed to load data"
+                try {
+                    val subResp = api.getActiveSubscription()
+                    _subscription.value = when {
+                        subResp.isSuccessful -> subResp.body()
+                        subResp.code() == 404 -> null
+                        else -> _subscription.value
+                    }
+                } catch (e: Exception) {
+                    partialFailure = true
+                    _subscription.value = null
+                }
+
+                try {
+                    val licResp = api.getLicenses()
+                    if (licResp.isSuccessful) {
+                        _licenses.value = licResp.body() ?: emptyList()
+                    }
+                } catch (e: Exception) {
+                    partialFailure = true
+                    _licenses.value = emptyList()
+                }
+
+                try {
+                    val statsResp = api.getDeviceStats()
+                    if (statsResp.isSuccessful) {
+                        mergeDeviceStatsWithLocal(statsResp.body())
+                    }
+                } catch (e: Exception) {
+                    partialFailure = true
+                }
+
+                if (partialFailure) {
+                    _error.value = "Could not reach server for some data. Local hotspot scan still works."
+                }
             } finally {
                 _loading.value = false
             }
         }
+    }
+
+    /** Keep local hotspot scan counts visible on Home even when API stats lag. */
+    private fun mergeDeviceStatsWithLocal(fromApi: DeviceStats?) {
+        val localOnline = _arpDeviceCount.value ?: 0
+        if (fromApi == null) {
+            if (localOnline > 0) {
+                _deviceStats.value = DeviceStats(
+                    total = localOnline.toLong(),
+                    online = localOnline.toLong(),
+                    blocked = 0,
+                    offline = 0,
+                    totalBytesSent = 0,
+                    totalBytesReceived = 0
+                )
+            }
+            return
+        }
+        val online = maxOf(fromApi.online, localOnline.toLong())
+        val total = maxOf(fromApi.total, online)
+        _deviceStats.value = fromApi.copy(
+            online = online,
+            total = total,
+            offline = maxOf(0, total - online - fromApi.blocked)
+        )
+    }
+
+    private fun updateLocalDeviceStats(onlineCount: Int) {
+        if (onlineCount <= 0) return
+        _arpDeviceCount.postValue(onlineCount)
+        mergeDeviceStatsWithLocal(_deviceStats.value)
     }
 
     fun loadDevices() {
@@ -133,7 +190,11 @@ class DashboardViewModel : ViewModel() {
             _deviceScanComplete.postValue(false)
             try {
                 val hotspotManager = com.wifiextender.utils.HotspotManager.getInstance(context)
-                if (_hotspotActive.value == true) hotspotManager.userHotspotActive = true
+                if (hotspotManager.syncHotspotStateFromSystem()) {
+                    _hotspotActive.postValue(true)
+                } else if (_hotspotActive.value == true) {
+                    hotspotManager.userHotspotActive = true
+                }
                 if (forceRefresh) hotspotManager.invalidateClientScanCache()
 
                 val clients = withContext(Dispatchers.IO) {
@@ -143,11 +204,11 @@ class DashboardViewModel : ViewModel() {
 
                 val reports = buildDeviceReports(clients, hotspotManager)
                 if (reports.isNotEmpty()) {
-                    _arpDeviceCount.postValue(reports.size)
+                    updateLocalDeviceStats(reports.size)
                     _devices.postValue(reports.toDeviceList())
                 } else if (showUserErrors && hotspotManager.isHotspotLikelyActive()) {
                     _error.postValue(
-                        "Connected device not detected yet. Wait 30s, then open Devices tab and pull down to refresh."
+                        "No devices detected yet. Keep hotspot on, wait 30s, then pull down to refresh."
                     )
                 }
 
@@ -158,6 +219,8 @@ class DashboardViewModel : ViewModel() {
                     if (!resp.isSuccessful) {
                         val errorBody = resp.errorBody()?.string() ?: ""
                         when {
+                            errorBody.contains("No active subscription") ->
+                                { /* local list already shown */ }
                             errorBody.contains("UPGRADE_REQUIRED") || resp.code() == 403 || resp.code() == 409 ->
                                 _upgradeRequired.postValue(errorBody.ifBlank { "Device limit reached for your plan." })
                             else ->
@@ -166,9 +229,13 @@ class DashboardViewModel : ViewModel() {
                     } else {
                         val fromBulk = resp.body() ?: emptyList()
                         val merged = mergeWithLiveScan(reports, fromBulk)
-                        if (merged.isNotEmpty()) {
-                            _devices.postValue(merged)
-                        }
+                        _devices.postValue(
+                            when {
+                                merged.isNotEmpty() -> merged
+                                reports.isNotEmpty() -> reports.toDeviceList()
+                                else -> _devices.value ?: emptyList()
+                            }
+                        )
                     }
                 } catch (_: Exception) {
                     _error.postValue("Could not sync devices to server. Showing local scan.")
@@ -186,7 +253,7 @@ class DashboardViewModel : ViewModel() {
     fun publishLocalClients(context: android.content.Context, clients: List<com.wifiextender.utils.ConnectedClient>) {
         val reports = buildDeviceReports(clients, com.wifiextender.utils.HotspotManager.getInstance(context))
         if (reports.isNotEmpty()) {
-            _arpDeviceCount.postValue(reports.size)
+            updateLocalDeviceStats(reports.size)
             _devices.postValue(reports.toDeviceList())
         }
     }
@@ -204,12 +271,15 @@ class DashboardViewModel : ViewModel() {
                 ip = client.ipAddress,
                 mac = mac
             )
+            val deviceType = DeviceNameResolver.inferDeviceCategory(client.name, client.vendor)
+                ?: client.vendor?.let { if (it in listOf("Apple", "Samsung", "Xiaomi", "Google")) it else "UNKNOWN" }
+                ?: "UNKNOWN"
             DeviceReport(
                 macAddress = mac,
                 deviceName = displayName,
                 ipAddress = client.ipAddress,
                 vendor = client.vendor ?: DeviceNameResolver.lookupVendor(mac),
-                deviceType = "UNKNOWN",
+                deviceType = deviceType,
                 online = true
             )
         }
@@ -237,8 +307,9 @@ class DashboardViewModel : ViewModel() {
 
     /** Merge API devices with live hotspot scan — currently connected devices stay Online. */
     private fun mergeWithLiveScan(local: List<DeviceReport>, fromApi: List<Device>): List<Device> {
+        val hotspotOn = isHotspotSessionActive()
         if (local.isEmpty()) {
-            return if (_hotspotActive.value == true) {
+            return if (hotspotOn) {
                 fromApi.filter { it.online && !it.blocked }
             } else {
                 fromApi
@@ -259,6 +330,12 @@ class DashboardViewModel : ViewModel() {
             val ipKey = apiDevice.ipAddress?.trim()
             val scanned = localByMac[apiDevice.macAddress.uppercase()]
                 ?: ipKey?.let { localByIp[it] }
+                ?: ipKey?.let { ip ->
+                    local.firstOrNull { report ->
+                        DeviceNameResolver.pseudoMacMatchesIp(apiDevice.macAddress, ip) ||
+                            report.ipAddress?.trim() == ip
+                    }
+                }
 
             if (scanned != null) {
                 matchedLocalMacs.add(scanned.macAddress.uppercase())
@@ -280,9 +357,10 @@ class DashboardViewModel : ViewModel() {
                     deviceName = betterName,
                     vendor = apiDevice.vendor ?: scanned.vendor,
                     ipAddress = apiDevice.ipAddress ?: scanned.ipAddress,
+                    deviceType = if (scanned.deviceType != "UNKNOWN") scanned.deviceType else apiDevice.deviceType,
                     online = true
                 )
-            } else if (_hotspotActive.value == true && !apiDevice.online) {
+            } else if (hotspotOn && !apiDevice.online) {
                 null
             } else {
                 apiDevice
@@ -294,6 +372,12 @@ class DashboardViewModel : ViewModel() {
                 ld.ipAddress?.trim() !in matchedIps
         }
         return merged + localOnly
+    }
+
+    private fun isHotspotSessionActive(): Boolean {
+        if (_hotspotActive.value == true) return true
+        val ctx = appContext ?: return false
+        return com.wifiextender.utils.HotspotManager.getInstance(ctx).isHotspotLikelyActive()
     }
 
     fun toggleBlock(deviceId: Long) {

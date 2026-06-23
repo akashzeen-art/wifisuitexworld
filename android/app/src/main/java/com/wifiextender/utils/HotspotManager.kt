@@ -132,15 +132,32 @@ class HotspotManager(private val context: Context) {
     fun isHotspotLikelyActive(): Boolean {
         if (userHotspotActive) return true
         if (isHotspotOn()) return true
+        if (hasTetheredInterfaces()) return true
         if (tetheringClientsCache.isNotEmpty() || softApClientsCache.isNotEmpty()) return true
         if (stableHotspotClients.isNotEmpty()) return true
+        if (readSystemReportedClientCount() > 0) return true
         return false
+    }
+
+    /** True when phone is sharing WiFi (hotspot / tethering interfaces up). */
+    fun hasTetheredInterfaces(): Boolean = getTetheredInterfaceNames().isNotEmpty()
+
+    /**
+     * Detect hotspot from system (Settings toggle, tethered ifaces).
+     * Call before device scans — sets [userHotspotActive] when sharing is on.
+     */
+    fun syncHotspotStateFromSystem(): Boolean {
+        val active = isHotspotOn() || hasTetheredInterfaces()
+        if (active) userHotspotActive = true
+        return active
     }
 
     private fun canProbeForClients(): Boolean =
         isHotspotLikelyActive() ||
+            hasTetheredInterfaces() ||
             getHotspotApIpv4AddressesRelaxed().isNotEmpty() ||
-            getHotspotSubnetPrefixes().isNotEmpty()
+            getHotspotSubnetPrefixes().isNotEmpty() ||
+            userHotspotActive
 
     private fun isWifiApEnabledReflection(): Boolean {
         return try {
@@ -799,8 +816,8 @@ class HotspotManager(private val context: Context) {
         readClientsFromArpAggressive().forEach { add(it) }
         readClientsFromIpNeighOnAp().forEach { add(it) }
 
-        if (includeSubnetScan && canProbeForClients() && countRealClients(merged.values) == 0) {
-            scanHotspotSubnetClients().forEach { add(it) }
+        if (includeSubnetScan && canProbeForClients()) {
+            scanHotspotSubnetClients(supplementExisting = countRealClients(merged.values) > 0).forEach { add(it) }
             readClientsFromArpAggressive().forEach { add(it) }
             readClientsFromIpNeighOnAp().forEach { add(it) }
             readCachedDumpsysClients(forceRefresh = true).forEach { add(it) }
@@ -884,12 +901,12 @@ class HotspotManager(private val context: Context) {
         tetheringClientsCache.isNotEmpty() || softApClientsCache.isNotEmpty()
 
     /** Probe only the hotspot AP subnet (wlan1 / ap0), never the phone's STA WiFi (wlan0). */
-    private fun scanHotspotSubnetClients(): List<ConnectedClient> {
+    private fun scanHotspotSubnetClients(supplementExisting: Boolean = false): List<ConnectedClient> {
         if (subnetScanInProgress) return subnetScanCache.ifEmpty { stableHotspotClients }
         synchronized(subnetScanLock) {
             if (subnetScanInProgress) return subnetScanCache.ifEmpty { stableHotspotClients }
             val now = System.currentTimeMillis()
-            if (subnetScanCache.isNotEmpty() && now - lastSubnetScanAt < 30_000) {
+            if (!supplementExisting && subnetScanCache.isNotEmpty() && now - lastSubnetScanAt < 30_000) {
                 return subnetScanCache
             }
             subnetScanInProgress = true
@@ -897,69 +914,89 @@ class HotspotManager(private val context: Context) {
             try {
                 val arpFirst = (readClientsFromArpAggressive() + readClientsFromIpNeighOnAp())
                     .distinctBy { it.macAddress ?: it.ipAddress }
-                if (arpFirst.isNotEmpty()) {
-                    subnetScanCache = arpFirst
-                    stableHotspotClients = arpFirst
-                    persistStableClients(arpFirst)
-                    Log.d(TAG, "subnet pre-scan via ARP/neigh: ${arpFirst.size} device(s)")
-                    return arpFirst
+                val merged = LinkedHashMap<String, ConnectedClient>()
+                arpFirst.forEach { c ->
+                    val key = c.macAddress?.uppercase() ?: c.ipAddress ?: return@forEach
+                    merged[key] = c
                 }
 
                 val localIps = getHotspotApIpv4AddressesRelaxed()
                 val prefixes = (getHotspotSubnetPrefixes() + OemBrandDetector.preferredSubnetPrefixes())
                     .distinct()
-                    .take(6)
-                if (prefixes.isEmpty()) {
-                    return stableHotspotClients
-                }
+                    .take(10)
+                val scanPrefixes = prefixes.ifEmpty { OemBrandDetector.preferredSubnetPrefixes().take(10) }
 
-                val skipIps = localIps.toSet()
-                val found = java.util.Collections.synchronizedList(mutableListOf<ConnectedClient>())
-                val pool = Executors.newFixedThreadPool(20)
+                val systemCount = readSystemReportedClientCount()
+                val shouldPing = supplementExisting ||
+                    arpFirst.size < maxOf(systemCount, 1) ||
+                    scanPrefixes.isNotEmpty()
+                if (shouldPing) {
+                    val skipIps = localIps.toSet()
+                    val found = java.util.Collections.synchronizedList(mutableListOf<ConnectedClient>())
+                    val pool = Executors.newFixedThreadPool(32)
 
-                // Common DHCP assignments first (e.g. 192.168.43.178), then rest of subnet
-                val hostOrder = (2..254).sortedBy { host ->
-                    when {
-                        host in 100..200 -> 0
-                        host in 2..60 -> 1
-                        else -> 2
+                    val hostOrder = (2..254).sortedBy { host ->
+                        when {
+                            host in 100..200 -> 0
+                            host in 2..60 -> 1
+                            else -> 2
+                        }
                     }
-                }
 
-                for (prefix in prefixes) {
-                    for (host in hostOrder) {
-                        val ip = "$prefix.$host"
-                        if (ip in skipIps || host == 1) continue
-                        pool.submit {
-                            if (isHostReachable(ip) || pingHost(ip)) {
-                                found.add(ConnectedClient(name = "", macAddress = null, ipAddress = ip))
+                    for (prefix in scanPrefixes) {
+                        for (host in hostOrder) {
+                            val ip = "$prefix.$host"
+                            if (ip in skipIps || host == 1) continue
+                            pool.submit {
+                                if (isHostReachable(ip) || pingHost(ip)) {
+                                    found.add(ConnectedClient(name = "", macAddress = null, ipAddress = ip))
+                                }
                             }
                         }
                     }
-                }
-                pool.shutdown()
-                try {
-                    pool.awaitTermination(10, TimeUnit.SECONDS)
-                } catch (_: InterruptedException) {
-                    pool.shutdownNow()
+                    pool.shutdown()
+                    try {
+                        pool.awaitTermination(15, TimeUnit.SECONDS)
+                    } catch (_: InterruptedException) {
+                        pool.shutdownNow()
+                    }
+
+                    val arpByIp = readClientsFromArpAggressive().associateBy { it.ipAddress }
+                    val dhcpByIp = readDhcpLeasesByIp()
+                    found.distinctBy { it.ipAddress }.forEach { client ->
+                        val ip = client.ipAddress ?: return@forEach
+                        val arp = arpByIp[ip]
+                        val dhcp = dhcpByIp[ip]
+                        val key = arp?.macAddress?.uppercase() ?: ip
+                        val enriched = enrichClient(
+                            client.copy(
+                                macAddress = arp?.macAddress ?: dhcp?.second,
+                                name = dhcp?.first.orEmpty(),
+                                vendor = arp?.vendor
+                            ),
+                            dhcpByIp
+                        )
+                        merged[key] = if (merged.containsKey(key)) pickBetterClient(merged[key]!!, enriched) else enriched
+                    }
                 }
 
-                val arpByIp = readClientsFromArpAggressive().associateBy { it.ipAddress }
-                val result = found
-                    .distinctBy { it.ipAddress }
-                    .map { client ->
-                        val ip = client.ipAddress ?: return@map client
-                        arpByIp[ip]?.let { arp ->
-                            client.copy(macAddress = arp.macAddress, vendor = arp.vendor)
-                        } ?: client
+                arpFirst.forEach { c ->
+                    val key = c.macAddress?.uppercase() ?: c.ipAddress ?: return@forEach
+                    val enriched = enrichClient(c, readDhcpLeasesByIp())
+                    merged[key] = if (merged.containsKey(key)) pickBetterClient(merged[key]!!, enriched) else enriched
+                }
+
+                val result = reconcileClientsByIp(merged.values)
+                    .filter { client ->
+                        client.macAddress != null ||
+                            (client.ipAddress != null && isLikelyHotspotClientIp(client.ipAddress!!))
                     }
-                    .filter { isLikelyHotspotClientIp(it.ipAddress.orEmpty()) }
                 if (result.isNotEmpty()) {
                     subnetScanCache = result
                     stableHotspotClients = result
                     persistStableClients(result)
                 }
-                Log.d(TAG, "subnet scan on $prefixes: ${result.size} device(s)")
+                Log.d(TAG, "subnet scan on $scanPrefixes: ${result.size} device(s) supplement=$supplementExisting")
                 return result.ifEmpty { stableHotspotClients }
             } finally {
                 subnetScanInProgress = false
@@ -1060,9 +1097,31 @@ class HotspotManager(private val context: Context) {
                 }
         } catch (_: Exception) {
         }
+        if (userHotspotActive || hasTetheredInterfaces() || isHotspotOn()) {
+            OemBrandDetector.preferredSubnetPrefixes().forEach { prefixes.add(it) }
+        }
         if (prefixes.isNotEmpty()) return prefixes.toList()
-        if (!isHotspotLikelyActive() && !userHotspotActive) return emptyList()
         return OemBrandDetector.preferredSubnetPrefixes()
+    }
+
+    /** How many clients the phone OS reports (Settings / dumpsys). */
+    fun readSystemReportedClientCount(): Int {
+        refreshTetheringClientsCache()
+        val cached = tetheringClientsCache.size + softApClientsCache.size
+        if (cached > 0) return cached
+        return try {
+            val dump = DumpsysClientParser.runDumpsys(arrayOf("dumpsys", "tethering"))
+            listOf(
+                Regex("""(?i)connected\s+clients?:\s*(\d+)"""),
+                Regex("""(?i)num\s+clients?:\s*(\d+)"""),
+                Regex("""(?i)client\s+count[:\s]+(\d+)"""),
+                Regex("""(?i)stations?:\s*(\d+)""")
+            ).firstNotNullOfOrNull { regex ->
+                regex.find(dump)?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it in 1..64 }
+            } ?: DumpsysClientParser.parseAll(dump).size
+        } catch (_: Exception) {
+            0
+        }
     }
 
     private fun pingHost(ip: String): Boolean {
@@ -1087,7 +1146,9 @@ class HotspotManager(private val context: Context) {
         return false
     }
 
-    private fun hasWifiScanPermission(): Boolean {
+    fun hasWifiScanPermission(): Boolean = hasWifiScanPermissionInternal()
+
+    private fun hasWifiScanPermissionInternal(): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val nearby = ContextCompat.checkSelfPermission(
                 context, android.Manifest.permission.NEARBY_WIFI_DEVICES
@@ -1103,7 +1164,7 @@ class HotspotManager(private val context: Context) {
         return fine || coarse
     }
 
-    private fun hasLocationForWifiClients(): Boolean = hasWifiScanPermission()
+    private fun hasLocationForWifiClients(): Boolean = hasWifiScanPermissionInternal()
 
     private fun readClientsFromDumpsysTethering(): List<ConnectedClient> {
         return try {
@@ -1206,8 +1267,8 @@ class HotspotManager(private val context: Context) {
     private fun parseTetheredClientReflection(client: Any): ConnectedClient? {
         return try {
             val macRaw = client.javaClass.methods.firstOrNull { it.name == "getMacAddress" }
-                ?.invoke(client) ?: return null
-            val mac = normalizeMac(macRaw.toString()) ?: return null
+                ?.invoke(client)
+            val mac = macRaw?.toString()?.let { normalizeMac(it) }
 
             val addresses = client.javaClass.methods.firstOrNull { it.name == "getAddresses" }
                 ?.invoke(client) as? Collection<*>
@@ -1222,6 +1283,8 @@ class HotspotManager(private val context: Context) {
 
             val hostname = client.javaClass.methods.firstOrNull { it.name == "getHostname" }
                 ?.invoke(client) as? String
+
+            if (mac.isNullOrBlank() && ip.isNullOrBlank()) return null
 
             ConnectedClient(
                 name = hostname?.takeIf { DeviceNameResolver.isRealHostname(it) } ?: "",
@@ -1338,10 +1401,72 @@ class HotspotManager(private val context: Context) {
 
     private fun pickBetterClient(a: ConnectedClient, b: ConnectedClient): ConnectedClient {
         val better = if (DeviceNameResolver.nameQuality(b.name) > DeviceNameResolver.nameQuality(a.name)) b else a
+        val worse = if (better === b) a else b
         return better.copy(
-            ipAddress = better.ipAddress ?: a.ipAddress,
-            vendor = better.vendor ?: a.vendor
+            macAddress = better.macAddress ?: worse.macAddress,
+            ipAddress = better.ipAddress ?: worse.ipAddress,
+            vendor = better.vendor ?: worse.vendor ?: DeviceNameResolver.lookupVendor(better.macAddress ?: worse.macAddress)
         )
+    }
+
+    private fun enrichClient(raw: ConnectedClient, dhcpByIp: Map<String, Pair<String?, String?>> = emptyMap()): ConnectedClient {
+        val mac = raw.macAddress?.uppercase()?.takeIf { it.length == 17 }
+        val dhcp = raw.ipAddress?.let { dhcpByIp[it] }
+        val hostname = listOf(
+            raw.name,
+            dhcp?.first,
+            raw.ipAddress?.let { DeviceNameResolver.resolveReverseHostname(it) }
+        ).firstOrNull { DeviceNameResolver.isRealHostname(it) }
+        val ip = raw.ipAddress ?: dhcp?.second
+        val vendor = raw.vendor ?: DeviceNameResolver.lookupVendor(mac)
+        val name = DeviceNameResolver.resolveDisplayName(
+            mac = mac,
+            ip = ip,
+            hostname = hostname,
+            cachedName = mac?.let { getCachedDeviceName(it) },
+            vendor = vendor
+        )
+        if (hostname != null && mac != null) cacheDeviceName(mac, hostname)
+        return ConnectedClient(name = name, macAddress = mac, ipAddress = ip, vendor = vendor)
+    }
+
+    /** Collapse IP-only and MAC-only entries for the same host. */
+    private fun reconcileClientsByIp(clients: Collection<ConnectedClient>): List<ConnectedClient> {
+        val byIp = LinkedHashMap<String, ConnectedClient>()
+        val noIp = mutableListOf<ConnectedClient>()
+        clients.forEach { client ->
+            val ip = client.ipAddress?.trim()
+            if (ip.isNullOrBlank()) {
+                noIp.add(client)
+                return@forEach
+            }
+            val existing = byIp[ip]
+            byIp[ip] = if (existing == null) client else pickBetterClient(existing, client)
+        }
+        val merged = byIp.values.toMutableList()
+        noIp.forEach { orphan ->
+            val match = merged.firstOrNull { other ->
+                other.macAddress != null && orphan.macAddress != null &&
+                    other.macAddress == orphan.macAddress
+            }
+            if (match != null) {
+                val idx = merged.indexOf(match)
+                merged[idx] = pickBetterClient(match, orphan)
+            } else {
+                merged.add(orphan)
+            }
+        }
+        return merged.distinctBy { it.macAddress?.uppercase() ?: it.ipAddress }
+    }
+
+    private fun readDhcpLeasesByIp(): Map<String, Pair<String?, String?>> {
+        val byMac = readDhcpLeaseHints()
+        val byIp = LinkedHashMap<String, Pair<String?, String?>>()
+        byMac.forEach { (mac, hostIp) ->
+            val ip = hostIp.second?.trim().orEmpty()
+            if (ip.isNotEmpty()) byIp[ip] = hostIp.first to mac
+        }
+        return byIp
     }
 
     private fun readDumpsysClientHints(): Map<String, Pair<String?, String?>> {
@@ -1390,19 +1515,26 @@ class HotspotManager(private val context: Context) {
         return readConnectedClientsFast()
     }
 
+    /** @see readSystemReportedClientCount */
+    fun readSystemTetheringClientCount(): Int = readSystemReportedClientCount()
+
     /** Best-effort discovery — dumpsys + system APIs + ARP; used by Hotspot and Devices tabs. */
     fun discoverConnectedClients(deepScan: Boolean = true): List<ConnectedClient> {
+        syncHotspotStateFromSystem()
         ensureClientListeners()
         refreshTetheringClientsCache()
+        val dhcpByIp = readDhcpLeasesByIp()
+        val systemCount = readSystemReportedClientCount()
 
         val merged = LinkedHashMap<String, ConnectedClient>()
         fun add(raw: ConnectedClient) {
-            val mac = raw.macAddress?.uppercase()?.takeIf { it.length == 17 }
-            val key = mac ?: raw.ipAddress?.takeIf { it.isNotBlank() } ?: return
-            if (isGatewayOrLocalIp(raw.ipAddress) && mac == null) return
+            val enriched = enrichClient(raw, dhcpByIp)
+            val mac = enriched.macAddress?.uppercase()?.takeIf { it.length == 17 }
+            val key = mac ?: enriched.ipAddress?.takeIf { it.isNotBlank() } ?: return
+            if (isGatewayOrLocalIp(enriched.ipAddress) && mac == null) return
             val existing = merged[key]
-            merged[key] = if (existing == null) raw else pickBetterClient(existing, raw)
-            if (mac != null && !raw.ipAddress.isNullOrBlank()) cacheIpMacMapping(raw.ipAddress!!, mac)
+            merged[key] = if (existing == null) enriched else pickBetterClient(existing, enriched)
+            if (mac != null && !enriched.ipAddress.isNullOrBlank()) cacheIpMacMapping(enriched.ipAddress!!, mac)
         }
 
         tetheringClientsCache.forEach { add(it) }
@@ -1413,7 +1545,6 @@ class HotspotManager(private val context: Context) {
         readClientsViaSoftApApi().forEach { add(it) }
         readClientsViaWifiManagerProbe().forEach { add(it) }
 
-        // Fresh dumpsys — works without GPS toggle on many phones (MIUI/Xiaomi)
         readFreshDumpsysClients().forEach { add(it) }
         readDhcpLeaseHints().forEach { (mac, pair) ->
             add(ConnectedClient(name = pair.first.orEmpty(), macAddress = mac, ipAddress = pair.second))
@@ -1423,32 +1554,42 @@ class HotspotManager(private val context: Context) {
         readClientsFromArpAggressive().forEach { add(it) }
         readClientsFromArp().forEach { add(it) }
 
-        if (deepScan && countRealClients(merged.values) == 0 && canProbeForClients()) {
-            scanHotspotSubnetClients().forEach { add(it) }
+        if (deepScan) {
+            scanHotspotSubnetClients(supplementExisting = merged.isNotEmpty()).forEach { add(it) }
             readFreshDumpsysClients().forEach { add(it) }
             readClientsFromArpAggressive().forEach { add(it) }
             readClientsFromIpNeighOnAp().forEach { add(it) }
-        } else if (deepScan && countRealClients(merged.values) > 0) {
-            // Merge any extra dumpsys hits even when we already have clients
-            readFreshDumpsysClients().forEach { add(it) }
+            readDhcpLeaseHints().forEach { (mac, pair) ->
+                add(ConnectedClient(name = pair.first.orEmpty(), macAddress = mac, ipAddress = pair.second))
+            }
         }
 
         if (merged.isEmpty() && stableHotspotClients.isNotEmpty()) {
-            return stableHotspotClients
+            return stableHotspotClients.map { enrichClient(it, dhcpByIp) }
         }
 
-        val result = merged.values
+        var result = reconcileClientsByIp(merged.values)
             .filter { client ->
                 !isGatewayOrLocalIp(client.ipAddress) &&
                     (client.macAddress != null || !client.ipAddress.isNullOrBlank())
             }
-            .toList()
+
+        // Phone Settings shows N clients but discovery missed them — force another subnet sweep
+        if (result.size < systemCount && deepScan && (isHotspotLikelyActive() || systemCount > 0)) {
+            invalidateClientScanCache()
+            scanHotspotSubnetClients(supplementExisting = true).forEach { add(it) }
+            result = reconcileClientsByIp(merged.values)
+                .filter { client ->
+                    !isGatewayOrLocalIp(client.ipAddress) &&
+                        (client.macAddress != null || !client.ipAddress.isNullOrBlank())
+                }
+        }
 
         if (result.isNotEmpty()) {
             stableHotspotClients = result
             persistStableClients(result)
         }
-        Log.d(TAG, "discoverConnectedClients: ${result.size} device(s) deep=$deepScan")
+        Log.d(TAG, "discoverConnectedClients: ${result.size} device(s) deep=$deepScan system=$systemCount")
         return result
     }
 
@@ -1485,13 +1626,18 @@ class HotspotManager(private val context: Context) {
     }
 
     fun cacheIpMacMapping(ip: String, mac: String) {
-        val normalized = mac.uppercase()
-        if (normalized.length != 17 || normalized.startsWith("02:")) return
+        val normalized = mac.uppercase().replace('-', ':')
+        if (normalized.length != 17 || normalized == "00:00:00:00:00:00") return
+        // Skip only our synthetic IP-derived MACs, not real private/randomized client MACs
+        if (normalized == DeviceNameResolver.pseudoMacFromIp(ip).uppercase()) return
         prefs.edit().putString("$IP_MAC_PREFIX$ip", normalized).apply()
     }
 
     fun resolveMacForReport(ip: String?, mac: String?): String? {
-        val realMac = mac?.trim()?.uppercase()?.takeIf { it.length == 17 && !it.startsWith("02:") }
+        val realMac = mac?.trim()?.uppercase()?.replace('-', ':')?.takeIf {
+            it.length == 17 && it != "00:00:00:00:00:00" &&
+                it != ip?.let { addr -> DeviceNameResolver.pseudoMacFromIp(addr).uppercase() }
+        }
         if (realMac != null) {
             ip?.let { cacheIpMacMapping(it, realMac) }
             return realMac
@@ -1499,7 +1645,7 @@ class HotspotManager(private val context: Context) {
         ip?.trim()?.takeIf { it.isNotBlank() }?.let { cached ->
             prefs.getString("$IP_MAC_PREFIX$cached", null)?.let { return it }
         }
-        return mac?.trim()?.uppercase()?.takeIf { it.length == 17 }
+        return mac?.trim()?.uppercase()?.replace('-', ':')?.takeIf { it.length == 17 }
             ?: ip?.takeIf { it.isNotBlank() }?.let { DeviceNameResolver.pseudoMacFromIp(it) }
     }
 
@@ -1556,7 +1702,7 @@ class HotspotManager(private val context: Context) {
     }
 
     private fun readClientsFromArpAggressive(): List<ConnectedClient> {
-        if (!canProbeForClients()) return emptyList()
+        if (!canProbeForClients() && !userHotspotActive && !hasTetheredInterfaces()) return emptyList()
         val activePrefixes = getHotspotSubnetPrefixes().toSet()
         return try {
             val arpFile = java.io.File("/proc/net/arp")
@@ -1596,7 +1742,7 @@ class HotspotManager(private val context: Context) {
                 val flags = p.getOrNull(2) ?: ""
                 val mac = p[3]
                 val iface = if (p.size >= 6) p[5] else ""
-                val complete = flags == "0x2" || flags == "0x6" || flags == "0x0"
+                val complete = flags == "0x2" || flags == "0x6" || flags == "0x0" || flags == "0x4"
                 val onHotspot = isApInterfaceName(iface) ||
                     DeviceNameResolver.isHotspotClientIp(ip) ||
                     DeviceNameResolver.isLikelyHotspotSubnetIp(ip)

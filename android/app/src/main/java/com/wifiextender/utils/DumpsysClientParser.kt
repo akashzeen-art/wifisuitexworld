@@ -28,8 +28,27 @@ object DumpsysClientParser {
         parseStationBlocks(dump).forEach { add(it) }
         parseMacIpPairs(dump).forEach { add(it) }
         parseHostnameEntries(dump).forEach { add(it) }
+        parseIpOnlyHotspotClients(dump).forEach { add(it) }
 
         return merged.values.toList()
+    }
+
+    /** IPs assigned to hotspot clients without MAC (common for iOS / Windows sleep). */
+    private fun parseIpOnlyHotspotClients(dump: String): List<ConnectedClient> {
+        val results = mutableListOf<ConnectedClient>()
+        val seen = mutableSetOf<String>()
+        val ipLine = Regex(
+            """(?i)(?:client|station|lease|hotspot|tether)[^/\n]*/(\d{1,3}(?:\.\d{1,3}){3})"""
+        )
+        dump.lineSequence().forEach { line ->
+            val ip = ipLine.find(line)?.groupValues?.get(1) ?: return@forEach
+            if (ip.endsWith(".1") || ip in seen) return@forEach
+            if (!DeviceNameResolver.isLikelyHotspotSubnetIp(ip)) return@forEach
+            if (MAC.containsMatchIn(line)) return@forEach
+            seen.add(ip)
+            results.add(ConnectedClient(name = "", macAddress = null, ipAddress = ip, vendor = null))
+        }
+        return results
     }
 
     fun parseTetheringClientInformation(dump: String): List<ConnectedClient> =

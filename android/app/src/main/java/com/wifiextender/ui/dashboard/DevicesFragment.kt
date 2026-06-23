@@ -30,9 +30,11 @@ class DevicesFragment : Fragment() {
     private var locationHintShown = false
 
     private val clientListener: (List<ConnectedClient>) -> Unit = listener@{ clients ->
-        if (clients.isEmpty()) return@listener
         activity?.runOnUiThread {
-            if (_binding != null) viewModel.publishLocalClients(requireContext(), clients)
+            if (_binding == null) return@runOnUiThread
+            if (clients.isNotEmpty()) {
+                viewModel.publishLocalClients(requireContext(), clients)
+            }
         }
     }
 
@@ -137,27 +139,27 @@ class DevicesFragment : Fragment() {
     private fun refreshDevices(force: Boolean) {
         if (_binding == null) return
         binding.swipeRefresh.isRefreshing = true
-        val hotspotOn = hotspotManager.isHotspotLikelyActive() ||
-            viewModel.hotspotActive.value == true
-        if (hotspotOn) {
+
+        if (hotspotManager.syncHotspotStateFromSystem() || hotspotManager.isHotspotLikelyActive()) {
+            viewModel.setHotspotActive(true)
             hotspotManager.userHotspotActive = true
-            hotspotManager.ensurePhoneSsidListener()
-            if (!hasLocationPermission()) {
-                requestLocationPermission()
-                if (!locationHintShown) {
-                    locationHintShown = true
-                    Snackbar.make(
-                        binding.root,
-                        "Allow Location permission for this app (Settings → Apps → WiFiExtender → Permissions).",
-                        Snackbar.LENGTH_LONG
-                    ).show()
-                }
-            }
-            viewModel.scanAndReportDevices(requireContext(), forceRefresh = force, showUserErrors = force)
-        } else {
-            viewModel.loadDevices()
-            binding.swipeRefresh.isRefreshing = false
         }
+
+        if (!hasScanPermission()) {
+            requestScanPermissions()
+            if (!locationHintShown && force) {
+                locationHintShown = true
+                Snackbar.make(
+                    binding.root,
+                    "Allow Location and Nearby devices for WiFiExtender to detect connected laptops and phones.",
+                    Snackbar.LENGTH_LONG
+                ).show()
+            }
+        }
+
+        hotspotManager.ensurePhoneSsidListener()
+        // Always run local scan first — works even when hotspot was started from phone Settings
+        viewModel.scanAndReportDevices(requireContext(), forceRefresh = force, showUserErrors = force)
     }
 
     private fun parseUpgradeMessage(raw: String): String {
@@ -181,19 +183,31 @@ class DevicesFragment : Fragment() {
             .show()
     }
 
-    private fun hasLocationPermission(): Boolean =
-        androidx.core.content.ContextCompat.checkSelfPermission(
-            requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION
+    private fun hasScanPermission(): Boolean {
+        val ctx = requireContext()
+        val fine = androidx.core.content.ContextCompat.checkSelfPermission(
+            ctx, android.Manifest.permission.ACCESS_FINE_LOCATION
         ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (fine) return true
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            return androidx.core.content.ContextCompat.checkSelfPermission(
+                ctx, android.Manifest.permission.NEARBY_WIFI_DEVICES
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        return androidx.core.content.ContextCompat.checkSelfPermission(
+            ctx, android.Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
 
-    private fun requestLocationPermission() {
-        requestPermissions(
-            arrayOf(
-                android.Manifest.permission.ACCESS_FINE_LOCATION,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION
-            ),
-            2001
+    private fun requestScanPermissions() {
+        val perms = mutableListOf(
+            android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
         )
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            perms.add(android.Manifest.permission.NEARBY_WIFI_DEVICES)
+        }
+        requestPermissions(perms.toTypedArray(), 2001)
     }
 
     @Deprecated("Deprecated in Java")

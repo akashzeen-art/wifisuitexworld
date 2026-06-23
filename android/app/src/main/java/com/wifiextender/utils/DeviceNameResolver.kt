@@ -211,8 +211,59 @@ object DeviceNameResolver {
 
     fun formatDeviceLabel(deviceName: String?, vendor: String?, ip: String?, mac: String): String {
         val name = deviceName?.trim().orEmpty()
-        if (isRealHostname(name) && !name.startsWith("Device ·")) return name
+        if (isRealHostname(name) && !name.startsWith("Device ·")) {
+            return prettifyHostname(name)
+        }
         return resolveDisplayName(mac, ip, name, vendor = vendor ?: lookupVendor(mac))
+    }
+
+    /** MacBook, iPhone, iPad, Windows PC, etc. from hostname or vendor OUI. */
+    fun inferDeviceCategory(hostname: String?, vendor: String?): String? {
+        val h = hostname?.lowercase().orEmpty()
+        return when {
+            h.contains("iphone") || h.contains("ios") -> "iPhone"
+            h.contains("ipad") -> "iPad"
+            h.contains("macbook") || h.contains("imac") || h.contains("mac-mini") || h.contains("macbookpro") -> "Mac"
+            h.contains("airpods") || h.contains("apple-tv") || h.contains("appletv") -> "Apple Device"
+            h.contains("android") || h.contains("galaxy") || h.contains("pixel") -> "Android"
+            h.contains("windows") || h.contains("desktop") || h.contains("laptop") || h.contains("pc-") -> "Laptop/PC"
+            h.contains("chromebook") -> "Chromebook"
+            vendor == "Apple" && h.isBlank() -> "Apple Device"
+            vendor in listOf("Dell", "HP", "Lenovo", "ASUS", "Acer", "Microsoft", "Intel") -> "Laptop/PC"
+            else -> null
+        }
+    }
+
+    fun prettifyHostname(raw: String): String {
+        return raw.trim()
+            .removeSuffix(".local")
+            .removeSuffix(".lan")
+            .replace('-', ' ')
+            .replace('_', ' ')
+            .split(' ')
+            .filter { it.isNotBlank() }
+            .joinToString(" ") { word ->
+                word.replaceFirstChar { c -> if (c.isLowerCase()) c.titlecase() else c.toString() }
+            }
+    }
+
+    fun pseudoMacMatchesIp(mac: String, ip: String): Boolean =
+        mac.uppercase().replace('-', ':') == pseudoMacFromIp(ip).uppercase()
+
+    /** Reverse DNS / mDNS hostname (e.g. Johns-MacBook-Air.local). */
+    fun resolveReverseHostname(ip: String): String? {
+        if (ip.isBlank()) return null
+        return try {
+            val addr = java.net.InetAddress.getByName(ip)
+            val host = addr.canonicalHostName?.trim().orEmpty()
+            when {
+                host.isBlank() || host == ip -> null
+                isRealHostname(host) -> prettifyHostname(host)
+                else -> null
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     /** Parse hostname + MAC + IP from dumpsys tethering / connectivity output */

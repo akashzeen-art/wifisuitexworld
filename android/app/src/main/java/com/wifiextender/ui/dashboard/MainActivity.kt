@@ -24,6 +24,8 @@ class MainActivity : AppCompatActivity() {
 
         tokenManager = TokenManager(this)
         RetrofitClient.init(tokenManager, this)
+        com.wifiextender.data.api.ApiConfig.ensureProductionUrl(this)
+        RetrofitClient.resetApi()
 
         if (!tokenManager.isLoggedIn()) {
             goToLogin(); return
@@ -32,6 +34,10 @@ class MainActivity : AppCompatActivity() {
         com.wifiextender.utils.HotspotManager.getInstance(applicationContext).ensureClientListeners()
 
         dashboardViewModel = ViewModelProvider(this)[DashboardViewModel::class.java]
+        val hotspotManager = com.wifiextender.utils.HotspotManager.getInstance(applicationContext)
+        if (hotspotManager.syncHotspotStateFromSystem()) {
+            dashboardViewModel.setHotspotActive(true)
+        }
         dashboardViewModel.startRealtimeDeviceMonitoring(applicationContext)
 
         val perms = mutableListOf(

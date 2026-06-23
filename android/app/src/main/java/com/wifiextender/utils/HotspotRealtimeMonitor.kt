@@ -20,20 +20,22 @@ class HotspotRealtimeMonitor private constructor(context: Context) {
     private val running = AtomicBoolean(false)
     private var lastSnapshot: List<ConnectedClient> = emptyList()
     private var pollGeneration = 0
+    private var pollCount = 0
 
     private val pollRunnable = object : Runnable {
         override fun run() {
             if (!running.get()) return
             val generation = pollGeneration
+            val deep = pollCount++ % 2 == 0
             Thread {
                 try {
-                    if (hotspotManager.userHotspotActive || hotspotManager.isHotspotLikelyActive()) {
+                    if (hotspotManager.userHotspotActive || hotspotManager.syncHotspotStateFromSystem() ||
+                        hotspotManager.isHotspotLikelyActive()
+                    ) {
                         hotspotManager.userHotspotActive = true
                         hotspotManager.ensureClientListeners()
-                        val clients = hotspotManager.discoverConnectedClients(deepScan = false)
-                        val deep = clients.isEmpty() &&
-                            (hotspotManager.userHotspotActive || hotspotManager.isHotspotOn())
-                        val result = if (deep) {
+                        val clients = hotspotManager.discoverConnectedClients(deepScan = deep)
+                        val result = if (clients.isEmpty()) {
                             hotspotManager.discoverConnectedClients(deepScan = true)
                         } else {
                             clients

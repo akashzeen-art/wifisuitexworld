@@ -75,10 +75,21 @@ class HomeFragment : Fragment() {
         }
 
         viewModel.deviceStats.observe(viewLifecycleOwner) { stats ->
-            if (stats != null) {
-                binding.tvOnlineDevices.text  = stats.online.toString()
-                binding.tvBlockedDevices.text = stats.blocked.toString()
-                binding.tvTotalDevices.text   = stats.total.toString()
+            updateDeviceCountDisplay(stats)
+        }
+
+        viewModel.arpDeviceCount.observe(viewLifecycleOwner) {
+            updateDeviceCountDisplay(viewModel.deviceStats.value)
+        }
+
+        viewModel.devices.observe(viewLifecycleOwner) { devices ->
+            val localOnline = devices.count { it.online && !it.blocked }
+            if (localOnline > 0) {
+                binding.tvOnlineDevices.text = localOnline.toString()
+                binding.tvTotalDevices.text = maxOf(
+                    devices.size,
+                    viewModel.deviceStats.value?.total?.toInt() ?: 0
+                ).toString()
             }
         }
 
@@ -96,6 +107,28 @@ class HomeFragment : Fragment() {
         }
 
         viewModel.loadHome()
+    }
+
+    private fun updateDeviceCountDisplay(stats: com.wifiextender.data.model.DeviceStats?) {
+        val localOnline = viewModel.arpDeviceCount.value ?: 0
+        val apiOnline = stats?.online?.toInt() ?: 0
+        val online = maxOf(localOnline, apiOnline)
+        binding.tvOnlineDevices.text = online.toString()
+        binding.tvBlockedDevices.text = (stats?.blocked ?: 0).toString()
+        binding.tvTotalDevices.text = maxOf(
+            stats?.total?.toInt() ?: 0,
+            online,
+            viewModel.devices.value?.size ?: 0
+        ).toString()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val hm = com.wifiextender.utils.HotspotManager.getInstance(requireContext())
+        if (hm.syncHotspotStateFromSystem() || hm.isHotspotLikelyActive()) {
+            viewModel.setHotspotActive(true)
+            viewModel.scanAndReportDevices(requireContext(), forceRefresh = false, showUserErrors = false)
+        }
     }
 
     override fun onDestroyView() { super.onDestroyView(); _binding = null }

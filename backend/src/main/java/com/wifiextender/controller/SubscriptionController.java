@@ -45,7 +45,11 @@ public class SubscriptionController {
     @Operation(summary = "Get my active subscription")
     @GetMapping("/active")
     public ResponseEntity<SubscriptionDto.Response> activeSub(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(subscriptionService.getActiveSub(user.getId()));
+        SubscriptionDto.Response sub = subscriptionService.getActiveSub(user.getId());
+        if (sub == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(sub);
     }
 
     @Operation(summary = "Request a plan — creates a PENDING subscription (admin must activate)")
