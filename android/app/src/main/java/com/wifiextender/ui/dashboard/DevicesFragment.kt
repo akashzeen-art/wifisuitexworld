@@ -13,7 +13,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.snackbar.Snackbar
 import com.wifiextender.R
 import com.wifiextender.databinding.FragmentDevicesBinding
-import com.wifiextender.ui.dashboard.adapter.DeviceAdapter
+import com.wifiextender.ui.dashboard.adapter.ConnectedClientAdapter
 import com.wifiextender.utils.ConnectedClient
 import com.wifiextender.utils.HotspotManager
 import com.wifiextender.utils.HotspotRealtimeMonitor
@@ -23,18 +23,18 @@ class DevicesFragment : Fragment() {
     private var _binding: FragmentDevicesBinding? = null
     private val binding get() = _binding!!
     private val viewModel: DashboardViewModel by activityViewModels()
-    private lateinit var adapter: DeviceAdapter
+    private lateinit var adapter: ConnectedClientAdapter
     private lateinit var hotspotManager: HotspotManager
+    private lateinit var realtimeMonitor: HotspotRealtimeMonitor
     private val handler = Handler(Looper.getMainLooper())
     private var pollRunnable: Runnable? = null
     private var locationHintShown = false
+    private var discoverInFlight = false
 
     private val clientListener: (List<ConnectedClient>) -> Unit = listener@{ clients ->
         activity?.runOnUiThread {
             if (_binding == null) return@runOnUiThread
-            if (clients.isNotEmpty()) {
-                viewModel.publishLocalClients(requireContext(), clients)
-            }
+            applyClientDisplay(clients)
         }
     }
 
@@ -45,10 +45,9 @@ class DevicesFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         hotspotManager = HotspotManager.getInstance(requireContext())
+        realtimeMonitor = HotspotRealtimeMonitor.getInstance(requireContext())
 
-        adapter = DeviceAdapter { device ->
-            viewModel.toggleBlock(device.id)
-        }
+        adapter = ConnectedClientAdapter()
         binding.rvDevices.layoutManager = LinearLayoutManager(requireContext())
         binding.rvDevices.adapter = adapter
 
@@ -56,12 +55,13 @@ class DevicesFragment : Fragment() {
             refreshDevices(force = true)
         }
 
-        viewModel.devices.observe(viewLifecycleOwner) { devices ->
-            val online = devices.filter { it.online && !it.blocked }
-            adapter.submitList(devices.sortedByDescending { it.online && !it.blocked })
-            binding.tvOnline.text = "Online: ${online.size}"
-            binding.tvBlocked.text = "Blocked: ${devices.count { it.blocked }}"
-            binding.tvEmpty.visibility = if (devices.isEmpty()) View.VISIBLE else View.GONE
+        viewModel.liveClients.observe(viewLifecycleOwner) { clients ->
+            if (isHotspotSharing()) applyClientDisplay(clients)
+            else applyClientDisplay(emptyList())
+        }
+
+        viewModel.hotspotActive.observe(viewLifecycleOwner) { active ->
+            if (active != true) applyClientDisplay(emptyList())
         }
 
         viewModel.deviceScanComplete.observe(viewLifecycleOwner) { done ->
@@ -99,36 +99,42 @@ class DevicesFragment : Fragment() {
         }
 
         viewModel.loadHome()
-        refreshDevices(force = false)
+        handler.post { refreshIfSharing() }
     }
 
     override fun onResume() {
         super.onResume()
+        hotspotManager.syncHotspotStateFromSystem()
+        viewModel.setHotspotActive(hotspotManager.isHotspotOn())
         hotspotManager.ensureClientListeners()
         hotspotManager.addClientListener(clientListener)
-        HotspotRealtimeMonitor.getInstance(requireContext()).addListener(clientListener)
-        refreshDevices(force = false)
+        realtimeMonitor.addListener(clientListener)
+        realtimeMonitor.start()
+        realtimeMonitor.forceRefresh()
+        checkLocationServices()
+        refreshIfSharing()
         startDevicePolling()
     }
 
     override fun onPause() {
         hotspotManager.removeClientListener(clientListener)
-        HotspotRealtimeMonitor.getInstance(requireContext()).removeListener(clientListener)
+        realtimeMonitor.removeListener(clientListener)
         stopDevicePolling()
         super.onPause()
     }
+
+    private fun isHotspotSharing(): Boolean =
+        hotspotManager.isHotspotOn() || viewModel.hotspotActive.value == true
 
     private fun startDevicePolling() {
         stopDevicePolling()
         pollRunnable = object : Runnable {
             override fun run() {
-                if (_binding != null && (hotspotManager.isHotspotLikelyActive() || viewModel.hotspotActive.value == true)) {
-                    refreshDevices(force = false)
-                }
-                handler.postDelayed(this, 8_000)
+                if (_binding != null) refreshIfSharing()
+                handler.postDelayed(this, 4_000)
             }
         }
-        handler.postDelayed(pollRunnable!!, 5_000)
+        handler.postDelayed(pollRunnable!!, 2_000)
     }
 
     private fun stopDevicePolling() {
@@ -138,28 +144,92 @@ class DevicesFragment : Fragment() {
 
     private fun refreshDevices(force: Boolean) {
         if (_binding == null) return
-        binding.swipeRefresh.isRefreshing = true
-
-        if (hotspotManager.syncHotspotStateFromSystem() || hotspotManager.isHotspotLikelyActive()) {
-            viewModel.setHotspotActive(true)
-            hotspotManager.userHotspotActive = true
+        if (!isHotspotSharing()) {
+            applyClientDisplay(emptyList())
+            binding.swipeRefresh.isRefreshing = false
+            Snackbar.make(binding.root, "Turn on hotspot first to see connected devices.", Snackbar.LENGTH_LONG).show()
+            return
         }
+        if (force) binding.swipeRefresh.isRefreshing = true
+        if (!hasScanPermission()) requestScanPermissions()
+        discoverAndDisplay(forceDeep = true)
+        viewModel.scanLocalDevicesOnly(requireContext())
+    }
 
-        if (!hasScanPermission()) {
-            requestScanPermissions()
-            if (!locationHintShown && force) {
-                locationHintShown = true
-                Snackbar.make(
-                    binding.root,
-                    "Allow Location and Nearby devices for WiFiExtender to detect connected laptops and phones.",
-                    Snackbar.LENGTH_LONG
-                ).show()
+    private fun refreshIfSharing() {
+        if (!isHotspotSharing()) {
+            applyClientDisplay(emptyList())
+            return
+        }
+        discoverAndDisplay()
+    }
+
+    private fun discoverAndDisplay(forceDeep: Boolean = false) {
+        if (_binding == null || discoverInFlight || !isHotspotSharing()) return
+        discoverInFlight = true
+        Thread {
+            try {
+                val discovered = hotspotManager.getRealtimeHotspotClients(deepScan = forceDeep)
+                handler.post {
+                    discoverInFlight = false
+                    if (_binding == null) return@post
+                    applyClientDisplay(discovered)
+                    binding.swipeRefresh.isRefreshing = false
+                }
+            } catch (_: Exception) {
+                handler.post {
+                    discoverInFlight = false
+                    if (_binding != null) {
+                        applyClientDisplay(mergeLiveSources())
+                        binding.swipeRefresh.isRefreshing = false
+                    }
+                }
             }
+        }.start()
+    }
+
+    private fun mergeLiveSources(vararg extra: List<ConnectedClient>): List<ConnectedClient> {
+        if (!isHotspotSharing()) return emptyList()
+        return hotspotManager.mergeConnectedClientsForDisplay(
+            hotspotManager.getCurrentConnectedClients(),
+            *extra,
+            realtimeMonitor.getLastSnapshot(),
+            viewModel.liveClients.value.orEmpty()
+        )
+    }
+
+    private fun applyClientDisplay(incoming: List<ConnectedClient>) {
+        if (_binding == null) return
+        if (!isHotspotSharing()) {
+            adapter.submitList(emptyList())
+            binding.tvOnline.text = "Connected: 0"
+            binding.tvBlocked.text = "Blocked: 0"
+            binding.tvEmpty.visibility = View.VISIBLE
+            binding.rvDevices.visibility = View.GONE
+            return
         }
 
-        hotspotManager.ensurePhoneSsidListener()
-        // Always run local scan first — works even when hotspot was started from phone Settings
-        viewModel.scanAndReportDevices(requireContext(), forceRefresh = force, showUserErrors = force)
+        val display = mergeLiveSources(incoming)
+        adapter.submitList(display.toList())
+        binding.tvOnline.text = "Connected: ${display.size}"
+        binding.tvBlocked.text = "Blocked: 0"
+        val showEmpty = display.isEmpty()
+        binding.tvEmpty.visibility = if (showEmpty) View.VISIBLE else View.GONE
+        binding.rvDevices.visibility = if (showEmpty) View.GONE else View.VISIBLE
+    }
+
+    private fun checkLocationServices() {
+        if (!hasScanPermission()) return
+        if (!hotspotManager.isLocationServicesEnabled() && !locationHintShown) {
+            locationHintShown = true
+            Snackbar.make(
+                binding.root,
+                "Turn ON Location in phone Settings — required to detect connected devices.",
+                Snackbar.LENGTH_LONG
+            ).setAction("Settings") {
+                startActivity(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+            }.show()
+        }
     }
 
     private fun parseUpgradeMessage(raw: String): String {
@@ -214,7 +284,7 @@ class DevicesFragment : Fragment() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 2001 && grantResults.any { it == android.content.pm.PackageManager.PERMISSION_GRANTED }) {
-            refreshDevices(force = true)
+            discoverAndDisplay(forceDeep = true)
         }
     }
 

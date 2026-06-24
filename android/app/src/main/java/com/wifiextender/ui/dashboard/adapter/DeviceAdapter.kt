@@ -20,16 +20,32 @@ class DeviceAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(device: Device) {
+            val resolvedMac = DeviceNameResolver.preferMacAddress(device.macAddress, ip = device.ipAddress)
+            val macLine = DeviceNameResolver.formatMacAddressDisplay(resolvedMac, device.ipAddress)
             val label = DeviceNameResolver.formatDeviceLabel(
                 deviceName = device.deviceName,
                 vendor = device.vendor,
                 ip = device.ipAddress,
-                mac = device.macAddress
+                mac = resolvedMac.ifBlank { device.macAddress }
             )
-            binding.tvDeviceName.text = label
-            binding.tvMacAddress.text = device.macAddress
+            binding.tvDeviceName.text = if (macLine != "—") macLine else "MAC unavailable"
+            val nameLine = device.deviceName?.trim().orEmpty()
+            val subtitle = when {
+                nameLine.isNotEmpty() && nameLine != "Unknown Device" &&
+                    !nameLine.equals(macLine, ignoreCase = true) -> nameLine
+                macLine == "—" && !device.ipAddress.isNullOrBlank() ->
+                    "Detecting MAC · IP: ${device.ipAddress}"
+                device.deviceType.isNotBlank() && device.deviceType != "UNKNOWN" -> device.deviceType
+                !device.ipAddress.isNullOrBlank() -> "IP: ${device.ipAddress}"
+                else -> ""
+            }
+            binding.tvMacAddress.text = subtitle
+            binding.tvMacAddress.visibility = if (subtitle.isNotEmpty()) View.VISIBLE else View.GONE
             binding.tvIpAddress.text = "IP: ${device.ipAddress ?: "—"}"
-            binding.tvDeviceType.text = device.deviceType
+            binding.tvDeviceType.text = when {
+                device.deviceType.isNotBlank() && device.deviceType != "UNKNOWN" -> device.deviceType
+                else -> device.vendor ?: "Connected"
+            }
 
             val vendor = device.vendor?.trim().orEmpty()
             if (vendor.isNotEmpty() && !label.contains(vendor, ignoreCase = true)) {
@@ -42,7 +58,7 @@ class DeviceAdapter(
 
             val (statusText, statusColor) = when {
                 device.blocked -> Pair("Blocked", R.color.red_500)
-                device.online  -> Pair("Online",  R.color.green_500)
+                device.online  -> Pair("Connected", R.color.green_500)
                 else           -> Pair("Offline", R.color.gray_400)
             }
             binding.tvStatus.text = statusText
@@ -73,7 +89,8 @@ class DeviceAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) = holder.bind(getItem(position))
 
     companion object DiffCallback : DiffUtil.ItemCallback<Device>() {
-        override fun areItemsTheSame(a: Device, b: Device) = a.macAddress == b.macAddress
+        override fun areItemsTheSame(a: Device, b: Device) =
+            a.macAddress.uppercase() == b.macAddress.uppercase()
         override fun areContentsTheSame(a: Device, b: Device) = a == b
     }
 }

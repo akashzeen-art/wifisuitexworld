@@ -18,7 +18,7 @@
             android:orientation="horizontal">
             <TextView android:id="@+id/tv_online"
                 android:layout_width="0dp" android:layout_height="wrap_content"
-                android:layout_weight="1" android:text="Online: 0"
+                android:layout_weight="1" android:text="Connected: 0"
                 android:textColor="#22c55e" android:textSize="14sp" android:textStyle="bold" />
             <TextView android:id="@+id/tv_blocked"
                 android:layout_width="0dp" android:layout_height="wrap_content"
@@ -57,7 +57,7 @@
             <TextView android:id="@+id/tv_empty"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:text="Waiting for devices…\n\n1. Hotspot must be ON\n2. Connect another device to Extendra-WiFi\n3. Wait ~30 seconds — list updates automatically"
+                android:text="No devices connected yet\n\n1. Turn on your phone hotspot\n2. Connect a laptop, phone, or tablet\n3. Devices appear here in real time\n   (e.g. da:93:66:5b:54:b6)"
                 android:textColor="@color/text_secondary"
                 android:textSize="14sp"
                 android:gravity="center"

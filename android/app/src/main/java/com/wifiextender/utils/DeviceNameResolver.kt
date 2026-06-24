@@ -217,6 +217,52 @@ object DeviceNameResolver {
         return resolveDisplayName(mac, ip, name, vendor = vendor ?: lookupVendor(mac))
     }
 
+    /** Phone hotspot style: lowercase colon-separated, e.g. da:93:66:5b:54:b6 */
+    fun formatMacAddressDisplay(mac: String?, ip: String? = null): String {
+        val raw = mac?.trim()?.takeIf { it.isNotBlank() }
+            ?: ip?.takeIf { it.isNotBlank() }?.let { pseudoMacFromIp(it) }
+            ?: return "—"
+        val normalized = raw.uppercase().replace('-', ':')
+        return if (normalized.matches(Regex("""([0-9A-F]{2}:){5}[0-9A-F]{2}"""))) {
+            normalized.lowercase()
+        } else {
+            raw.lowercase().replace('-', ':')
+        }
+    }
+
+    /** One connected client line like Android hotspot settings (MAC + optional name). */
+    fun formatHotspotClientLine(name: String?, vendor: String?, ip: String?, mac: String?): String {
+        val macLine = formatMacAddressDisplay(mac, ip)
+        val label = formatDeviceLabel(name, vendor, ip, mac ?: macLine)
+        val showLabel = label.isNotBlank() &&
+            label != "Unknown Device" &&
+            !label.equals(macLine, ignoreCase = true) &&
+            !label.startsWith("Device ·")
+        return if (showLabel) "• $label\n  $macLine" else "• $macLine"
+    }
+
+    fun isValidMac(mac: String?): Boolean {
+        if (mac.isNullOrBlank()) return false
+        val n = mac.trim().uppercase().replace('-', ':')
+        return n.matches(Regex("""([0-9A-F]{2}:){5}[0-9A-F]{2}""")) && n != "00:00:00:00:00:00"
+    }
+
+    fun isPseudoMac(mac: String?, ip: String? = null): Boolean {
+        if (!isValidMac(mac)) return true
+        if (ip != null && pseudoMacMatchesIp(mac!!, ip)) return true
+        return false
+    }
+
+    /** Prefer real OUI MAC from tethering/dumpsys over synthetic IP-derived MAC. */
+    fun preferMacAddress(vararg candidates: String?, ip: String? = null): String {
+        val normalized = candidates.filterNotNull()
+            .map { it.trim().uppercase().replace('-', ':') }
+            .filter { isValidMac(it) }
+        return normalized.firstOrNull { !isPseudoMac(it, ip) }
+            ?: normalized.firstOrNull()
+            ?: ""
+    }
+
     /** MacBook, iPhone, iPad, Windows PC, etc. from hostname or vendor OUI. */
     fun inferDeviceCategory(hostname: String?, vendor: String?): String? {
         val h = hostname?.lowercase().orEmpty()

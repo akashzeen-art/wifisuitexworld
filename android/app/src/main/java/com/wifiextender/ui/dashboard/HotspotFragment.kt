@@ -123,12 +123,9 @@ class HotspotFragment : Fragment() {
 
         binding.btnToggleHotspot.setOnClickListener {
             if (isHotspotActive) {
-                openHotspotSettings()
-                startAutoCheckOff()
+                stopHotspotFromApp()
             } else {
-                ssidConfirmPending = true
-                openHotspotSettings()
-                startAutoCheckOn()
+                startHotspotFromApp()
             }
         }
 
@@ -404,11 +401,10 @@ class HotspotFragment : Fragment() {
         binding.tvConnectedNames.text = if (clients.isEmpty()) {
             "No devices connected yet"
         } else {
-            clients.joinToString("\n") { client ->
-                val label = com.wifiextender.utils.DeviceNameResolver.formatDeviceLabel(
-                    client.name, client.vendor, client.ipAddress, client.macAddress ?: ""
+            clients.joinToString("\n\n") { client ->
+                com.wifiextender.utils.DeviceNameResolver.formatHotspotClientLine(
+                    client.name, client.vendor, client.ipAddress, client.macAddress
                 )
-                "• $label"
             }
         }
         binding.tvConnectedNames.visibility = View.VISIBLE
@@ -616,26 +612,76 @@ class HotspotFragment : Fragment() {
 
     private fun startAutoCheckOff() {
         autoCheckRunnable?.let { handler.removeCallbacks(it) }
+        binding.btnToggleHotspot.text = "Stopping hotspot..."
+        binding.btnToggleHotspot.isEnabled = false
         var checks = 0
         autoCheckRunnable = object : Runnable {
             override fun run() {
                 if (_binding == null) return
                 checks++
-                if (!hotspotManager.isHotspotLikelyActive()) {
+                if (!hotspotManager.isHotspotOn()) {
                     setHotspotRunning(false)
+                    viewModel.setHotspotActive(false)
+                    hotspotManager.markHotspotStopped()
                     lastSyncedCredentials = null
                     setUiStopped()
                     stopUptimeTimer()
                     stopSyncPolling()
+                    updateConnectedDisplay(emptyList())
+                    binding.btnToggleHotspot.isEnabled = true
                     autoCheckRunnable = null
-                } else if (checks < 20) {
-                    handler.postDelayed(this, 1500)
+                } else if (checks < 30) {
+                    handler.postDelayed(this, 1000)
                 } else {
+                    binding.btnToggleHotspot.isEnabled = true
+                    binding.btnToggleHotspot.text = "⏹  Stop Hotspot"
+                    showSnack("Turn OFF hotspot in phone Settings, then return here.")
                     autoCheckRunnable = null
                 }
             }
         }
-        handler.postDelayed(autoCheckRunnable!!, 1500)
+        handler.postDelayed(autoCheckRunnable!!, 1000)
+    }
+
+    private fun stopHotspotFromApp() {
+        setHotspotRunning(false)
+        viewModel.setHotspotActive(false)
+        hotspotManager.markHotspotStopped()
+        HotspotRealtimeMonitor.getInstance(requireContext()).clearSnapshot()
+        updateConnectedDisplay(emptyList())
+        setUiStopped()
+        stopUptimeTimer()
+        stopSyncPolling()
+
+        val stopped = hotspotManager.stopHotspot()
+        if (stopped && !hotspotManager.isHotspotOn()) {
+            showSnack("✅ Hotspot stopped")
+        } else {
+            showSnack("Turn OFF hotspot in Settings (opened for you)")
+            openHotspotSettings()
+        }
+        startAutoCheckOff()
+    }
+
+    private fun startHotspotFromApp() {
+        ssidConfirmPending = true
+        val started = hotspotManager.startHotspot()
+        if (started && hotspotManager.isHotspotOn()) {
+            setHotspotRunning(true)
+            viewModel.setHotspotActive(true)
+            passwordDialogShown = false
+            lastSyncedCredentials = null
+            refreshCredentialsQuietly()
+            setUiStarted()
+            startUptimeTimer()
+            startSyncPolling()
+            HotspotRealtimeMonitor.getInstance(requireContext()).forceRefresh()
+            showSnack("✅ Hotspot started")
+        } else {
+            showSnack("Turn ON hotspot in Settings (opened for you)")
+            openHotspotSettings()
+            startAutoCheckOn()
+        }
     }
 
     override fun onResume() {
@@ -643,7 +689,7 @@ class HotspotFragment : Fragment() {
         isFragmentResumed = true
         HotspotRealtimeMonitor.getInstance(requireContext()).addListener(realtimeListener)
         updateWifiSource()
-        val hotspotOn = hotspotManager.isHotspotLikelyActive()
+        val hotspotOn = hotspotManager.isHotspotOn()
 
         when {
             !isHotspotActive && hotspotOn -> {
@@ -658,6 +704,8 @@ class HotspotFragment : Fragment() {
             }
             isHotspotActive && !hotspotOn -> {
                 setHotspotRunning(false)
+                viewModel.setHotspotActive(false)
+                hotspotManager.markHotspotStopped()
                 lastSyncedCredentials = null
                 ssidConfirmPending = false
                 ssidRetryRunnable?.let { handler.removeCallbacks(it) }
@@ -666,6 +714,7 @@ class HotspotFragment : Fragment() {
                 setUiStopped()
                 stopUptimeTimer()
                 stopSyncPolling()
+                updateConnectedDisplay(emptyList())
             }
             isHotspotActive -> syncUiFromPhone()
         }

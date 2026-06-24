@@ -52,16 +52,26 @@ class DashboardViewModel : ViewModel() {
     private val _hotspotActive = MutableLiveData(false)
     val hotspotActive: LiveData<Boolean> = _hotspotActive
 
+    private val _liveClients = MutableLiveData<List<com.wifiextender.utils.ConnectedClient>>(emptyList())
+    val liveClients: LiveData<List<com.wifiextender.utils.ConnectedClient>> = _liveClients
+
     private var monitoringAttached = false
     private var lastApiSyncAt = 0L
     private var appContext: android.content.Context? = null
+    private var lastDisplayedDevices: List<Device> = emptyList()
 
     fun setHotspotActive(active: Boolean) {
         _hotspotActive.postValue(active)
-        if (active) {
-            appContext?.let { ctx ->
-                com.wifiextender.utils.HotspotManager.getInstance(ctx).userHotspotActive = true
-                com.wifiextender.utils.HotspotRealtimeMonitor.getInstance(ctx).forceRefresh()
+        appContext?.let { ctx ->
+            val hm = com.wifiextender.utils.HotspotManager.getInstance(ctx)
+            val monitor = com.wifiextender.utils.HotspotRealtimeMonitor.getInstance(ctx)
+            if (active) {
+                hm.userHotspotActive = true
+                monitor.forceRefresh()
+            } else {
+                hm.markHotspotStopped()
+                monitor.clearSnapshot()
+                _liveClients.postValue(emptyList())
             }
         }
     }
@@ -73,9 +83,7 @@ class DashboardViewModel : ViewModel() {
         appContext = context.applicationContext
         val monitor = com.wifiextender.utils.HotspotRealtimeMonitor.getInstance(context)
         monitor.addListener { clients ->
-            if (clients.isNotEmpty()) {
-                publishLocalClients(context.applicationContext, clients)
-            }
+            publishLocalClients(context.applicationContext, clients)
             val hm = com.wifiextender.utils.HotspotManager.getInstance(context)
             val hotspotOn = _hotspotActive.value == true || hm.isHotspotLikelyActive()
             if (hotspotOn && clients.isNotEmpty()) {
@@ -197,22 +205,38 @@ class DashboardViewModel : ViewModel() {
                 }
                 if (forceRefresh) hotspotManager.invalidateClientScanCache()
 
-                val clients = withContext(Dispatchers.IO) {
+                val discovered = withContext(Dispatchers.IO) {
                     hotspotManager.ensureClientListeners()
                     hotspotManager.discoverConnectedClients(deepScan = true)
                 }
+                val systemClients = withContext(Dispatchers.Main) {
+                    hotspotManager.getCurrentConnectedClients()
+                }
+                val clients = hotspotManager.mergeConnectedClientsForDisplay(discovered, systemClients, _liveClients.value.orEmpty())
+                _liveClients.postValue(clients)
 
                 val reports = buildDeviceReports(clients, hotspotManager)
-                if (reports.isNotEmpty()) {
-                    updateLocalDeviceStats(reports.size)
-                    _devices.postValue(reports.toDeviceList())
-                } else if (showUserErrors && hotspotManager.isHotspotLikelyActive()) {
-                    _error.postValue(
-                        "No devices detected yet. Keep hotspot on, wait 30s, then pull down to refresh."
-                    )
+                updateLocalDeviceStats(reports.size)
+
+                val existingByMac = _devices.value.orEmpty().associateBy { it.macAddress.uppercase() }
+                val localDisplay = clientsToDevices(clients, hotspotManager, existingByMac)
+                if (localDisplay.isNotEmpty()) {
+                    lastDisplayedDevices = localDisplay
+                    _devices.postValue(localDisplay)
+                } else if (!hotspotManager.isHotspotLikelyActive() && _hotspotActive.value != true) {
+                    // Only clear when hotspot is definitely off
+                    _devices.postValue(emptyList())
+                    lastDisplayedDevices = emptyList()
                 }
 
-                if (reports.isEmpty()) return@launch
+                if (reports.isEmpty()) {
+                    if (showUserErrors && hotspotManager.isHotspotLikelyActive()) {
+                        _error.postValue(
+                            "No devices detected yet. Keep hotspot on, wait 30s, then pull down to refresh."
+                        )
+                    }
+                    return@launch
+                }
 
                 try {
                     val resp = api.reportDevicesBulk(BulkDeviceReport(reports))
@@ -229,10 +253,11 @@ class DashboardViewModel : ViewModel() {
                     } else {
                         val fromBulk = resp.body() ?: emptyList()
                         val merged = mergeWithLiveScan(reports, fromBulk)
+                        val existingByMac = merged.associateBy { it.macAddress.uppercase() }
                         _devices.postValue(
                             when {
                                 merged.isNotEmpty() -> merged
-                                reports.isNotEmpty() -> reports.toDeviceList()
+                                reports.isNotEmpty() -> reports.toDeviceList(existingByMac)
                                 else -> _devices.value ?: emptyList()
                             }
                         )
@@ -251,10 +276,141 @@ class DashboardViewModel : ViewModel() {
     }
 
     fun publishLocalClients(context: android.content.Context, clients: List<com.wifiextender.utils.ConnectedClient>) {
-        val reports = buildDeviceReports(clients, com.wifiextender.utils.HotspotManager.getInstance(context))
-        if (reports.isNotEmpty()) {
-            updateLocalDeviceStats(reports.size)
-            _devices.postValue(reports.toDeviceList())
+        val hotspotManager = com.wifiextender.utils.HotspotManager.getInstance(context)
+        hotspotManager.assumeHotspotSharingActive()
+        if (hotspotManager.syncHotspotStateFromSystem()) {
+            _hotspotActive.postValue(true)
+        }
+
+        val effectiveClients = hotspotManager.mergeConnectedClientsForDisplay(
+            clients,
+            hotspotManager.getCurrentConnectedClients(),
+            _liveClients.value.orEmpty()
+        )
+        _liveClients.postValue(effectiveClients)
+
+        val reports = buildDeviceReports(effectiveClients, hotspotManager)
+        updateLocalDeviceStats(maxOf(reports.size, effectiveClients.size))
+
+        val existingByMac = _devices.value.orEmpty().associateBy { it.macAddress.uppercase() }
+        val display = mapClientsForDevicesTab(context, effectiveClients, existingByMac)
+        if (display.isNotEmpty()) {
+            lastDisplayedDevices = display
+            _devices.postValue(display)
+        }
+    }
+
+    /** Devices tab — convert ConnectedClient list (same as Hotspot tab). */
+    fun mapClientsForDevicesTab(
+        context: android.content.Context,
+        clients: List<com.wifiextender.utils.ConnectedClient>,
+        existingByMac: Map<String, Device> = emptyMap()
+    ): List<Device> {
+        val hotspotManager = com.wifiextender.utils.HotspotManager.getInstance(context)
+        val merged = hotspotManager.mergeConnectedClientsForDisplay(
+            clients,
+            hotspotManager.getCurrentConnectedClients()
+        )
+        return clientsToDevices(merged, hotspotManager, existingByMac).filter { !it.blocked }
+    }
+
+    /** Fast local-only scan for Devices tab — no API call. */
+    fun scanLocalDevicesOnly(context: android.content.Context) {
+        viewModelScope.launch {
+            try {
+                val hotspotManager = com.wifiextender.utils.HotspotManager.getInstance(context)
+                hotspotManager.assumeHotspotSharingActive()
+                hotspotManager.syncHotspotStateFromSystem()
+                _hotspotActive.postValue(true)
+                val clients = withContext(Dispatchers.IO) {
+                    hotspotManager.discoverConnectedClients(deepScan = true)
+                }
+                publishLocalClients(context, clients)
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    /** Devices tab — live scan + API + last-known cache. */
+    fun buildDisplayDevices(
+        clients: List<com.wifiextender.utils.ConnectedClient>,
+        apiDevices: List<Device>,
+        hotspotOn: Boolean,
+        context: android.content.Context
+    ): List<Device> {
+        val hotspotManager = com.wifiextender.utils.HotspotManager.getInstance(context)
+        val existingByMac = apiDevices.associateBy { it.macAddress.uppercase() }
+        val mergedClients = hotspotManager.mergeConnectedClientsForDisplay(
+            clients,
+            hotspotManager.getCurrentConnectedClients(),
+            _liveClients.value.orEmpty()
+        )
+        val fromLive = mapClientsForDevicesTab(context, mergedClients, existingByMac)
+        if (fromLive.isNotEmpty()) {
+            lastDisplayedDevices = fromLive
+            return fromLive
+        }
+        if (lastDisplayedDevices.isNotEmpty() && (hotspotOn || hotspotManager.isHotspotLikelyActive())) {
+            return lastDisplayedDevices
+        }
+        return apiDevices.filter { it.online && !it.blocked }
+    }
+
+    private fun clientsToDevices(
+        clients: List<com.wifiextender.utils.ConnectedClient>,
+        hotspotManager: com.wifiextender.utils.HotspotManager,
+        existingByMac: Map<String, Device> = emptyMap()
+    ): List<Device> {
+        return clients.mapNotNull { client ->
+            val mac = resolveClientMac(client, hotspotManager) ?: return@mapNotNull null
+
+            val macKey = mac.uppercase()
+            val prev = existingByMac[macKey]
+                ?: client.ipAddress?.trim()?.takeIf { it.isNotEmpty() }?.let { ip ->
+                    existingByMac.values.firstOrNull { it.ipAddress?.trim() == ip }
+                }
+            val label = DeviceNameResolver.formatDeviceLabel(
+                client.name, client.vendor, client.ipAddress, mac
+            )
+            val deviceType = DeviceNameResolver.inferDeviceCategory(client.name, client.vendor)
+                ?: client.vendor?.let { if (it in listOf("Apple", "Samsung", "Xiaomi", "Google", "Dell", "HP", "Lenovo")) it else "UNKNOWN" }
+                ?: if (!client.ipAddress.isNullOrBlank()) "Connected device" else "UNKNOWN"
+            val displayName = when {
+                label != "Unknown Device" && !label.startsWith("Device ·") -> label
+                deviceType != "UNKNOWN" -> deviceType
+                !client.ipAddress.isNullOrBlank() -> "Device at ${client.ipAddress}"
+                else -> label
+            }
+
+            Device(
+                id = prev?.id ?: macKey.hashCode().toLong().let { if (it < 0) -it else it },
+                macAddress = mac,
+                deviceName = displayName,
+                deviceType = deviceType,
+                ipAddress = client.ipAddress,
+                vendor = client.vendor ?: DeviceNameResolver.lookupVendor(mac),
+                signalStrength = null,
+                blocked = prev?.blocked ?: false,
+                online = true,
+                bytesSent = prev?.bytesSent ?: 0,
+                bytesReceived = prev?.bytesReceived ?: 0,
+                totalBytes = prev?.totalBytes ?: 0,
+                lastSeen = null,
+                connectedAt = null
+            )
+        }
+    }
+
+    private fun resolveClientMac(
+        client: com.wifiextender.utils.ConnectedClient,
+        hotspotManager: com.wifiextender.utils.HotspotManager
+    ): String? {
+        val direct = client.macAddress?.trim()?.uppercase()?.replace('-', ':')
+        if (DeviceNameResolver.isValidMac(direct)) return direct
+        val resolved = hotspotManager.resolveMacForReport(client.ipAddress, client.macAddress)
+        if (DeviceNameResolver.isValidMac(resolved)) return resolved
+        return client.ipAddress?.trim()?.takeIf { it.isNotEmpty() }?.let {
+            DeviceNameResolver.pseudoMacFromIp(it)
         }
     }
 
@@ -263,8 +419,7 @@ class DashboardViewModel : ViewModel() {
         hotspotManager: com.wifiextender.utils.HotspotManager
     ): List<DeviceReport> {
         return clients.mapNotNull { client ->
-            val mac = hotspotManager.resolveMacForReport(client.ipAddress, client.macAddress)
-                ?: return@mapNotNull null
+            val mac = resolveClientMac(client, hotspotManager) ?: return@mapNotNull null
             val displayName = DeviceNameResolver.formatDeviceLabel(
                 deviceName = client.name,
                 vendor = client.vendor,
@@ -285,21 +440,33 @@ class DashboardViewModel : ViewModel() {
         }
     }
 
-    private fun List<DeviceReport>.toDeviceList(): List<Device> =
-        mapIndexed { index, d ->
+    private fun List<DeviceReport>.toDeviceList(existingByMac: Map<String, Device> = emptyMap()): List<Device> =
+        map { d ->
+            val macKey = d.macAddress.uppercase()
+            val prev = existingByMac[macKey]
+                ?: d.ipAddress?.trim()?.takeIf { it.isNotEmpty() }?.let { ip ->
+                    existingByMac.values.firstOrNull { existing ->
+                        existing.ipAddress?.trim() == ip ||
+                            DeviceNameResolver.pseudoMacMatchesIp(existing.macAddress, ip) ||
+                            existing.ipAddress?.let { ip2 ->
+                                DeviceNameResolver.pseudoMacMatchesIp(d.macAddress, ip2)
+                            } == true
+                    }
+                }
+            val stableId = prev?.id ?: macKey.hashCode().toLong().let { if (it < 0) -it else it }
             Device(
-                id = index.toLong(),
+                id = stableId,
                 macAddress = d.macAddress,
                 deviceName = d.deviceName ?: DeviceNameResolver.formatDeviceLabel(null, d.vendor, d.ipAddress, d.macAddress),
                 deviceType = d.deviceType,
                 ipAddress = d.ipAddress,
                 vendor = d.vendor,
                 signalStrength = null,
-                blocked = false,
+                blocked = prev?.blocked ?: false,
                 online = d.online,
-                bytesSent = 0,
-                bytesReceived = 0,
-                totalBytes = 0,
+                bytesSent = prev?.bytesSent ?: 0,
+                bytesReceived = prev?.bytesReceived ?: 0,
+                totalBytes = prev?.totalBytes ?: 0,
                 lastSeen = null,
                 connectedAt = null
             )
@@ -316,7 +483,7 @@ class DashboardViewModel : ViewModel() {
             }
         }
 
-        val localDevices = local.toDeviceList()
+        val localDevices = local.toDeviceList(fromApi.associateBy { it.macAddress.uppercase() })
         if (fromApi.isEmpty()) return localDevices
 
         val localByMac = local.associateBy { it.macAddress.uppercase() }
@@ -354,6 +521,11 @@ class DashboardViewModel : ViewModel() {
                     )
                 }
                 apiDevice.copy(
+                    macAddress = DeviceNameResolver.preferMacAddress(
+                        scanned.macAddress,
+                        apiDevice.macAddress,
+                        ip = apiDevice.ipAddress ?: scanned.ipAddress
+                    ).ifBlank { apiDevice.macAddress },
                     deviceName = betterName,
                     vendor = apiDevice.vendor ?: scanned.vendor,
                     ipAddress = apiDevice.ipAddress ?: scanned.ipAddress,

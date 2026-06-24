@@ -1,11 +1,11 @@
 {
   "android": {
-    "version": "1.2.3",
-    "versionCode": 15,
+    "version": "1.3.1",
+    "versionCode": 23,
     "label": "WiFiExtender Android",
     "filename": "wifi-extender-android.apk",
     "minSdk": "Android 8.0+",
-    "updated": "2026-06-24"
+    "updated": "2026-06-23"
   },
   "windows": {
     "version": "1.2.0",

@@ -109,8 +109,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text=""
-                    android:textSize="11sp"
+                    android:textSize="12sp"
                     android:textColor="@color/text_secondary"
+                    android:fontFamily="monospace"
                     android:gravity="center"
                     android:layout_marginBottom="12dp"
                     android:visibility="gone" />

@@ -22,42 +22,49 @@ class HotspotRealtimeMonitor private constructor(context: Context) {
     private var pollGeneration = 0
     private var pollCount = 0
 
-    private val pollRunnable = object : Runnable {
-        override fun run() {
-            if (!running.get()) return
-            val generation = pollGeneration
-            val deep = pollCount++ % 2 == 0
-            Thread {
-                try {
-                    if (hotspotManager.userHotspotActive || hotspotManager.syncHotspotStateFromSystem() ||
-                        hotspotManager.isHotspotLikelyActive()
-                    ) {
-                        hotspotManager.userHotspotActive = true
-                        hotspotManager.ensureClientListeners()
-                        val clients = hotspotManager.discoverConnectedClients(deepScan = deep)
-                        val result = if (clients.isEmpty()) {
-                            hotspotManager.discoverConnectedClients(deepScan = true)
-                        } else {
-                            clients
-                        }
-                        if (generation != pollGeneration) return@Thread
-                        if (snapshotChanged(lastSnapshot, result)) {
-                            lastSnapshot = result
-                            handler.post { notifyListeners(result) }
-                        }
-                    } else if (lastSnapshot.isNotEmpty()) {
+    private val pollRunnable: Runnable = Runnable {
+        if (!running.get()) return@Runnable
+        val generation = pollGeneration
+        val deep = pollCount++ % 2 == 0
+        Thread {
+            try {
+                val sharing = hotspotManager.isHotspotOn() || hotspotManager.syncHotspotStateFromSystem()
+                if (!sharing) {
+                    if (lastSnapshot.isNotEmpty()) {
                         lastSnapshot = emptyList()
                         handler.post { notifyListeners(emptyList()) }
                     }
-                } catch (e: Exception) {
-                    Log.w(TAG, "poll failed: ${e.message}")
-                } finally {
-                    if (running.get() && generation == pollGeneration) {
-                        handler.postDelayed(this, POLL_INTERVAL_MS)
+                } else {
+                    hotspotManager.userHotspotActive = true
+                    hotspotManager.ensureClientListeners()
+                    val system = hotspotManager.getCurrentConnectedClients()
+                    val clients = if (system.isNotEmpty()) {
+                        system
+                    } else {
+                        val discovered = hotspotManager.discoverConnectedClients(deepScan = deep)
+                        if (discovered.isEmpty()) {
+                            hotspotManager.discoverConnectedClients(deepScan = true)
+                        } else {
+                            discovered
+                        }
+                    }
+                    if (generation == pollGeneration && snapshotChanged(lastSnapshot, clients)) {
+                        lastSnapshot = clients
+                        handler.post { notifyListeners(clients) }
                     }
                 }
-            }.start()
-        }
+            } catch (e: Exception) {
+                Log.w(TAG, "poll failed: ${e.message}")
+            } finally {
+                if (running.get() && generation == pollGeneration) {
+                    scheduleNextPoll()
+                }
+            }
+        }.start()
+    }
+
+    private fun scheduleNextPoll() {
+        handler.postDelayed(pollRunnable, POLL_INTERVAL_MS)
     }
 
     fun addListener(listener: (List<ConnectedClient>) -> Unit) {
@@ -88,9 +95,19 @@ class HotspotRealtimeMonitor private constructor(context: Context) {
     fun isRunning(): Boolean = running.get()
 
     fun forceRefresh() {
-        if (!running.get()) return
+        if (!running.get()) {
+            start()
+        }
         handler.removeCallbacks(pollRunnable)
         handler.post(pollRunnable)
+    }
+
+    /** Last non-empty client snapshot — used by Devices tab when a quick read returns empty. */
+    fun getLastSnapshot(): List<ConnectedClient> = lastSnapshot
+
+    fun clearSnapshot() {
+        lastSnapshot = emptyList()
+        handler.post { notifyListeners(emptyList()) }
     }
 
     private fun notifyListeners(clients: List<ConnectedClient>) {
@@ -111,7 +128,7 @@ class HotspotRealtimeMonitor private constructor(context: Context) {
 
     companion object {
         private const val TAG = "HotspotMonitor"
-        private const val POLL_INTERVAL_MS = 5_000L
+        private const val POLL_INTERVAL_MS = 4_000L
 
         @Volatile
         private var instance: HotspotRealtimeMonitor? = null
