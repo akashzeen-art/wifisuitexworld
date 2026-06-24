@@ -51,14 +51,7 @@ class DevicesFragment : Fragment() {
         binding.rvDevices.layoutManager = LinearLayoutManager(requireContext())
         binding.rvDevices.adapter = adapter
 
-        binding.swipeRefresh.setOnRefreshListener {
-            refreshDevices(force = true)
-        }
-
-        viewModel.liveClients.observe(viewLifecycleOwner) { clients ->
-            if (isHotspotSharing()) applyClientDisplay(clients)
-            else applyClientDisplay(emptyList())
-        }
+        binding.swipeRefresh.setOnRefreshListener { refreshDevices(force = true) }
 
         viewModel.hotspotActive.observe(viewLifecycleOwner) { active ->
             if (active != true) applyClientDisplay(emptyList())
@@ -131,10 +124,10 @@ class DevicesFragment : Fragment() {
         pollRunnable = object : Runnable {
             override fun run() {
                 if (_binding != null) refreshIfSharing()
-                handler.postDelayed(this, 4_000)
+                handler.postDelayed(this, REFRESH_MS)
             }
         }
-        handler.postDelayed(pollRunnable!!, 2_000)
+        handler.postDelayed(pollRunnable!!, REFRESH_MS)
     }
 
     private fun stopDevicePolling() {
@@ -153,7 +146,6 @@ class DevicesFragment : Fragment() {
         if (force) binding.swipeRefresh.isRefreshing = true
         if (!hasScanPermission()) requestScanPermissions()
         discoverAndDisplay(forceDeep = true)
-        viewModel.scanLocalDevicesOnly(requireContext())
     }
 
     private fun refreshIfSharing() {
@@ -180,7 +172,7 @@ class DevicesFragment : Fragment() {
                 handler.post {
                     discoverInFlight = false
                     if (_binding != null) {
-                        applyClientDisplay(mergeLiveSources())
+                        applyClientDisplay(hotspotManager.getCurrentConnectedClients())
                         binding.swipeRefresh.isRefreshing = false
                     }
                 }
@@ -188,16 +180,7 @@ class DevicesFragment : Fragment() {
         }.start()
     }
 
-    private fun mergeLiveSources(vararg extra: List<ConnectedClient>): List<ConnectedClient> {
-        if (!isHotspotSharing()) return emptyList()
-        return hotspotManager.mergeConnectedClientsForDisplay(
-            hotspotManager.getCurrentConnectedClients(),
-            *extra,
-            realtimeMonitor.getLastSnapshot(),
-            viewModel.liveClients.value.orEmpty()
-        )
-    }
-
+    /** Fresh scan only — never merge stale API/cache lists (fixes disconnected devices still showing). */
     private fun applyClientDisplay(incoming: List<ConnectedClient>) {
         if (_binding == null) return
         if (!isHotspotSharing()) {
@@ -209,7 +192,7 @@ class DevicesFragment : Fragment() {
             return
         }
 
-        val display = mergeLiveSources(incoming)
+        val display = incoming.ifEmpty { hotspotManager.getCurrentConnectedClients() }
         adapter.submitList(display.toList())
         binding.tvOnline.text = "Connected: ${display.size}"
         binding.tvBlocked.text = "Blocked: 0"
@@ -292,5 +275,9 @@ class DevicesFragment : Fragment() {
         stopDevicePolling()
         super.onDestroyView()
         _binding = null
+    }
+
+    companion object {
+        private const val REFRESH_MS = 3_000L
     }
 }

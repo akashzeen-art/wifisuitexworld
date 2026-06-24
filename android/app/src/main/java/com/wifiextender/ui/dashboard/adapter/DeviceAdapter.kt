@@ -65,13 +65,7 @@ class DeviceAdapter(
             binding.tvStatus.setTextColor(ContextCompat.getColor(binding.root.context, statusColor))
             binding.viewStatusDot.setBackgroundColor(ContextCompat.getColor(binding.root.context, statusColor))
             binding.tvBandwidth.text = "${formatBytes(device.bytesReceived)} ↓  ${formatBytes(device.bytesSent)} ↑"
-
-            binding.btnBlock.text = if (device.blocked) "Unblock" else "Block"
-            binding.btnBlock.setBackgroundColor(
-                ContextCompat.getColor(binding.root.context,
-                    if (device.blocked) R.color.green_500 else R.color.red_500)
-            )
-            binding.btnBlock.setOnClickListener { onBlockToggle(device) }
+            binding.btnBlock.visibility = View.GONE
         }
 
         private fun formatBytes(bytes: Long): String = when {

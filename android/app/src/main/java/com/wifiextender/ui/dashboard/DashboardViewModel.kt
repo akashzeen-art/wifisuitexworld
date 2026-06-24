@@ -287,7 +287,11 @@ class DashboardViewModel : ViewModel() {
             hotspotManager.getCurrentConnectedClients(),
             _liveClients.value.orEmpty()
         )
-        _liveClients.postValue(effectiveClients)
+        if (effectiveClients.isEmpty()) {
+            _liveClients.postValue(emptyList())
+        } else {
+            _liveClients.postValue(effectiveClients)
+        }
 
         val reports = buildDeviceReports(effectiveClients, hotspotManager)
         updateLocalDeviceStats(maxOf(reports.size, effectiveClients.size))

@@ -32,7 +32,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:text="Sign in to your account"
+            android:text="Sign in to activate your license"
             android:textSize="15sp"
             android:textColor="@color/text_secondary" />
 

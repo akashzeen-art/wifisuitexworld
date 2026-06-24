@@ -7,6 +7,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import com.wifiextender.R
 import com.wifiextender.data.api.RetrofitClient
+import com.wifiextender.data.prefs.LicenseManager
 import com.wifiextender.data.prefs.TokenManager
 import com.wifiextender.databinding.ActivityMainBinding
 import com.wifiextender.ui.auth.LoginActivity
@@ -29,6 +30,12 @@ class MainActivity : AppCompatActivity() {
 
         if (!tokenManager.isLoggedIn()) {
             goToLogin(); return
+        }
+
+        if (!LicenseManager(this).isLicenseValid()) {
+            startActivity(Intent(this, com.wifiextender.ui.auth.LicenseActivity::class.java))
+            finish()
+            return
         }
 
         com.wifiextender.utils.HotspotManager.getInstance(applicationContext).ensureClientListeners()
@@ -97,6 +104,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun logout() {
+        LicenseManager(this).clear()
         tokenManager.clear()
         goToLogin()
     }

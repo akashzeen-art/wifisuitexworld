@@ -43,6 +43,12 @@ interface ApiService {
     @GET("licenses")
     suspend fun getMyLicenses(): Response<List<License>>
 
+    @POST("licenses/activate")
+    suspend fun activateLicense(@Body body: LicenseActivateRequest): Response<LicenseActivateResponse>
+
+    @POST("licenses/validate")
+    suspend fun validateLicense(@Body body: LicenseValidateRequest): Response<LicenseActivateResponse>
+
     // ── Devices ───────────────────────────────────────────────────────────────
     @GET("devices")
     suspend fun getDevices(): Response<List<Device>>

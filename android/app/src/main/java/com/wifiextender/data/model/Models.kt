@@ -84,6 +84,28 @@ data class License(
     val expired: Boolean
 )
 
+data class LicenseActivateRequest(
+    val licenseKey: String,
+    val machineId: String,
+    val machineLabel: String? = null
+)
+
+data class LicenseValidateRequest(
+    val licenseKey: String,
+    val machineId: String? = null
+)
+
+data class LicenseActivateResponse(
+    val success: Boolean = false,
+    val message: String? = null,
+    val license: License? = null,
+    val planName: String? = null,
+    val maxDevices: Int? = null,
+    val unlimitedDevices: Boolean = false,
+    val expiresAt: String? = null,
+    val lifetime: Boolean = false
+)
+
 // ── Devices ───────────────────────────────────────────────────────────────────
 
 data class Device(

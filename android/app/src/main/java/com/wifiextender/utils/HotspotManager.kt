@@ -1758,6 +1758,9 @@ class HotspotManager(private val context: Context) {
         if (result.isNotEmpty()) {
             stableHotspotClients = result
             persistStableClients(result)
+        } else if (isHotspotOn()) {
+            stableHotspotClients = emptyList()
+            prefs.edit().remove(KEY_STABLE_CLIENTS).apply()
         }
         Log.d(TAG, "discoverConnectedClients: ${result.size} device(s) deep=$deepScan system=$systemCount api=${systemApiClients.size}")
         return result

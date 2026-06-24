@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import com.wifiextender.data.prefs.LicenseManager
 import com.wifiextender.data.prefs.TokenManager
 import com.wifiextender.databinding.FragmentProfileBinding
 import com.wifiextender.ui.auth.LoginActivity
@@ -35,13 +36,14 @@ class ProfileFragment : Fragment() {
         }
 
         val brand = HotspotManager.getInstance(requireContext()).getDetectedPhoneBrand()
-        binding.tvAppVersion.text = "WiFiExtender v1.3.1 · $brand"
+        binding.tvAppVersion.text = "WiFiExtender v1.3.2 · $brand"
 
         binding.btnLogout.setOnClickListener {
             androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle("Sign Out")
                 .setMessage("Are you sure you want to sign out?")
                 .setPositiveButton("Sign Out") { _, _ ->
+                    LicenseManager(requireContext()).clear()
                     tokenManager.clear()
                     startActivity(Intent(requireContext(), LoginActivity::class.java)
                         .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK))

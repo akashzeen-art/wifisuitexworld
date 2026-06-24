@@ -48,9 +48,13 @@ class HotspotRealtimeMonitor private constructor(context: Context) {
                             discovered
                         }
                     }
-                    if (generation == pollGeneration && snapshotChanged(lastSnapshot, clients)) {
-                        lastSnapshot = clients
-                        handler.post { notifyListeners(clients) }
+                    if (generation == pollGeneration) {
+                        val changed = snapshotChanged(lastSnapshot, clients) ||
+                            clients.size != lastSnapshot.size
+                        if (changed) {
+                            lastSnapshot = clients
+                            handler.post { notifyListeners(clients) }
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -128,7 +132,7 @@ class HotspotRealtimeMonitor private constructor(context: Context) {
 
     companion object {
         private const val TAG = "HotspotMonitor"
-        private const val POLL_INTERVAL_MS = 4_000L
+        private const val POLL_INTERVAL_MS = 3_000L
 
         @Volatile
         private var instance: HotspotRealtimeMonitor? = null

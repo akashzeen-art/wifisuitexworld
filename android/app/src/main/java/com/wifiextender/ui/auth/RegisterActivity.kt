@@ -10,7 +10,6 @@ import com.wifiextender.data.api.ApiConfig
 import com.wifiextender.data.api.RetrofitClient
 import com.wifiextender.data.prefs.TokenManager
 import com.wifiextender.databinding.ActivityRegisterBinding
-import com.wifiextender.ui.dashboard.MainActivity
 
 class RegisterActivity : AppCompatActivity() {
 
@@ -57,8 +56,11 @@ class RegisterActivity : AppCompatActivity() {
                 is AuthState.Loading -> setLoading(true)
                 is AuthState.Success -> {
                     setLoading(false)
-                    startActivity(Intent(this, MainActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK))
+                    startActivity(
+                        AuthNavigator.destinationAfterAuth(this@RegisterActivity)
+                            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
+                    )
+                    finish()
                 }
                 is AuthState.Error -> {
                     setLoading(false)

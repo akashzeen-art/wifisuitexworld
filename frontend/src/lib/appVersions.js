@@ -1,8 +1,8 @@
 /** Fallback when app-releases.json is not reachable (must match android/app/build.gradle). */
 export const APP_RELEASES_FALLBACK = {
   android: {
-    version: '1.3.1',
-    versionCode: 23,
+    version: '1.3.2',
+    versionCode: 24,
     label: 'WiFiExtender Android',
     filename: 'wifi-extender-android.apk',
     minSdk: 'Android 8.0+',

@@ -1,13 +1,11 @@
 package com.wifiextender.ui.auth
 
 import android.annotation.SuppressLint
-import android.content.Intent
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.wifiextender.data.api.ApiConfig
 import com.wifiextender.data.prefs.TokenManager
-import com.wifiextender.ui.dashboard.MainActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -18,15 +16,13 @@ class SplashActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(com.wifiextender.R.layout.activity_splash)
         ApiConfig.ensureProductionUrl(this)
-        val tokenManager = TokenManager(this)
 
         lifecycleScope.launch {
-            delay(1200)
-            val intent = if (tokenManager.isLoggedIn())
-                Intent(this@SplashActivity, MainActivity::class.java)
-            else
-                Intent(this@SplashActivity, LoginActivity::class.java)
-            startActivity(intent)
+            delay(1000)
+            startActivity(
+                AuthNavigator.destinationAfterAuth(this@SplashActivity)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
             finish()
         }
     }

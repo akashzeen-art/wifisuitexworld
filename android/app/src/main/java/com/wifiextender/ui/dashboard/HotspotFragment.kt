@@ -93,21 +93,6 @@ class HotspotFragment : Fragment() {
             }
         }
 
-        viewModel.devices.observe(viewLifecycleOwner) { devices ->
-            if (_binding == null || !isHotspotActive) return@observe
-            val online = devices.filter { it.online && !it.blocked }
-            updateConnectedDisplay(online.map {
-                ConnectedClient(
-                    name = com.wifiextender.utils.DeviceNameResolver.formatDeviceLabel(
-                        it.deviceName, it.vendor, it.ipAddress, it.macAddress
-                    ),
-                    macAddress = it.macAddress,
-                    ipAddress = it.ipAddress,
-                    vendor = it.vendor
-                )
-            })
-        }
-
         if (hotspotManager.isHotspotOn()) {
             setHotspotRunning(true)
             refreshCredentialsQuietly()
