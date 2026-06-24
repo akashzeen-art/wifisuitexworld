@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.wifiextender.data.api.ApiConfig
+import com.wifiextender.data.api.RetrofitClient
 import com.wifiextender.data.prefs.TokenManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -16,6 +17,11 @@ class SplashActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(com.wifiextender.R.layout.activity_splash)
         ApiConfig.ensureProductionUrl(this)
+        val tokenManager = TokenManager(this)
+        if (tokenManager.isLoggedIn()) {
+            RetrofitClient.init(tokenManager, this)
+            RetrofitClient.resetApi()
+        }
 
         lifecycleScope.launch {
             delay(1000)

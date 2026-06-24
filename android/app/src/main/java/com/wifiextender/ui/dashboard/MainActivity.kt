@@ -29,7 +29,8 @@ class MainActivity : AppCompatActivity() {
         RetrofitClient.resetApi()
 
         if (!tokenManager.isLoggedIn()) {
-            goToLogin(); return
+            goToLogin()
+            return
         }
 
         if (!LicenseManager(this).hasCompletedActivation()) {
@@ -47,6 +48,11 @@ class MainActivity : AppCompatActivity() {
         }
         dashboardViewModel.startRealtimeDeviceMonitoring(applicationContext)
 
+        requestScanPermissionsIfNeeded()
+        setupBottomNavigation(savedInstanceState)
+    }
+
+    private fun requestScanPermissionsIfNeeded() {
         val perms = mutableListOf(
             android.Manifest.permission.ACCESS_FINE_LOCATION,
             android.Manifest.permission.ACCESS_COARSE_LOCATION
@@ -61,46 +67,56 @@ class MainActivity : AppCompatActivity() {
         if (missing.isNotEmpty()) {
             androidx.core.app.ActivityCompat.requestPermissions(this, missing.toTypedArray(), 1001)
         }
+    }
 
-        val homeFragment         = HomeFragment()
-        val hotspotFragment      = HotspotFragment()
-        val devicesFragment      = DevicesFragment()
-        val subscriptionFragment = SubscriptionFragment()
-        val profileFragment      = ProfileFragment()
+    private fun setupBottomNavigation(savedInstanceState: Bundle?) {
+        if (savedInstanceState == null) {
+            supportFragmentManager.beginTransaction()
+                .add(R.id.fragment_container, HomeFragment(), TAG_HOME)
+                .commitNow()
+        }
 
-        // Add all fragments, show only home
-        supportFragmentManager.beginTransaction()
-            .add(R.id.fragment_container, homeFragment, "home")
-            .add(R.id.fragment_container, hotspotFragment, "hotspot")
-            .add(R.id.fragment_container, devicesFragment, "devices")
-            .add(R.id.fragment_container, subscriptionFragment, "subscription")
-            .add(R.id.fragment_container, profileFragment, "profile")
-            .hide(hotspotFragment)
-            .hide(devicesFragment)
-            .hide(subscriptionFragment)
-            .hide(profileFragment)
-            .commit()
-
+        binding.bottomNav.selectedItemId = R.id.nav_home
         binding.bottomNav.setOnItemSelectedListener { item ->
-            val fm = supportFragmentManager.beginTransaction()
-            listOf(homeFragment, hotspotFragment, devicesFragment, subscriptionFragment, profileFragment)
-                .forEach { fm.hide(it) }
-            when (item.itemId) {
-                R.id.nav_home         -> fm.show(homeFragment)
-                R.id.nav_hotspot      -> fm.show(hotspotFragment)
-                R.id.nav_devices      -> fm.show(devicesFragment)
-                R.id.nav_subscription -> fm.show(subscriptionFragment)
-                R.id.nav_profile      -> fm.show(profileFragment)
-            }
-            fm.commit()
+            showTab(item.itemId)
             true
         }
     }
 
-    private fun loadFragment(fragment: Fragment) {
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.fragment_container, fragment)
-            .commit()
+    private fun showTab(itemId: Int): Fragment {
+        val tag = tabTag(itemId)
+        var fragment = supportFragmentManager.findFragmentByTag(tag)
+        val tx = supportFragmentManager.beginTransaction()
+        supportFragmentManager.fragments.forEach { existing ->
+            if (existing.isAdded && existing.tag != tag) {
+                tx.hide(existing)
+            }
+        }
+        if (fragment == null) {
+            fragment = newFragmentFor(itemId)
+            tx.add(R.id.fragment_container, fragment, tag)
+        } else {
+            tx.show(fragment)
+        }
+        tx.commitNow()
+        return fragment
+    }
+
+    private fun tabTag(itemId: Int): String = when (itemId) {
+        R.id.nav_home -> TAG_HOME
+        R.id.nav_hotspot -> TAG_HOTSPOT
+        R.id.nav_devices -> TAG_DEVICES
+        R.id.nav_subscription -> TAG_SUBSCRIPTION
+        R.id.nav_profile -> TAG_PROFILE
+        else -> TAG_HOME
+    }
+
+    private fun newFragmentFor(itemId: Int): Fragment = when (itemId) {
+        R.id.nav_hotspot -> HotspotFragment()
+        R.id.nav_devices -> DevicesFragment()
+        R.id.nav_subscription -> SubscriptionFragment()
+        R.id.nav_profile -> ProfileFragment()
+        else -> HomeFragment()
     }
 
     fun logout() {
@@ -113,5 +129,13 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent(this, LoginActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK))
         finish()
+    }
+
+    companion object {
+        private const val TAG_HOME = "home"
+        private const val TAG_HOTSPOT = "hotspot"
+        private const val TAG_DEVICES = "devices"
+        private const val TAG_SUBSCRIPTION = "subscription"
+        private const val TAG_PROFILE = "profile"
     }
 }

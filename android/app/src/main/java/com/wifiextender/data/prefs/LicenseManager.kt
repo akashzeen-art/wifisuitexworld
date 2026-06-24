@@ -12,11 +12,15 @@ class LicenseManager(context: Context) {
     private val gson = Gson()
 
     fun saveActivation(key: String, response: LicenseActivateResponse) {
+        val safe = response.copy(
+            success = true,
+            license = null
+        )
         prefs.edit()
             .putString(KEY_LICENSE, formatKey(key))
             .putBoolean(KEY_VALID, true)
             .putBoolean(KEY_ACTIVATED_ONCE, true)
-            .putString(KEY_DATA, gson.toJson(response))
+            .putString(KEY_DATA, gson.toJson(safe))
             .commit()
     }
 
