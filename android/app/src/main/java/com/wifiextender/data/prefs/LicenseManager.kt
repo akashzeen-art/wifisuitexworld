@@ -15,8 +15,9 @@ class LicenseManager(context: Context) {
         prefs.edit()
             .putString(KEY_LICENSE, formatKey(key))
             .putBoolean(KEY_VALID, true)
+            .putBoolean(KEY_ACTIVATED_ONCE, true)
             .putString(KEY_DATA, gson.toJson(response))
-            .apply()
+            .commit()
     }
 
     fun getLicenseKey(): String? = prefs.getString(KEY_LICENSE, null)
@@ -33,8 +34,12 @@ class LicenseManager(context: Context) {
     fun isLicenseValid(): Boolean =
         prefs.getBoolean(KEY_VALID, false) && !getLicenseKey().isNullOrBlank()
 
+    /** True after first successful activation on this device — skip license screen on later logins. */
+    fun hasCompletedActivation(): Boolean =
+        prefs.getBoolean(KEY_ACTIVATED_ONCE, false) || isLicenseValid()
+
     fun clear() {
-        prefs.edit().clear().apply()
+        prefs.edit().clear().commit()
     }
 
     fun formatKey(raw: String): String {
@@ -46,5 +51,6 @@ class LicenseManager(context: Context) {
         private const val KEY_LICENSE = "license_key"
         private const val KEY_VALID = "license_valid"
         private const val KEY_DATA = "license_data"
+        private const val KEY_ACTIVATED_ONCE = "license_activated_once"
     }
 }

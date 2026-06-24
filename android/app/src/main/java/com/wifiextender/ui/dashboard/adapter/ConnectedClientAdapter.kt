@@ -9,16 +9,18 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.wifiextender.R
 import com.wifiextender.databinding.ItemDeviceBinding
-import com.wifiextender.utils.ConnectedClient
 import com.wifiextender.utils.DeviceNameResolver
 
-/** Devices tab — same ConnectedClient rows as Hotspot tab (MAC + name + IP). */
-class ConnectedClientAdapter : ListAdapter<ConnectedClient, ConnectedClientAdapter.ViewHolder>(DiffCallback) {
+/** Devices tab — ConnectedClient rows with optional block/unblock. */
+class ConnectedClientAdapter(
+    private val onBlockToggle: (Long) -> Unit
+) : ListAdapter<ConnectedDeviceRow, ConnectedClientAdapter.ViewHolder>(DiffCallback) {
 
     inner class ViewHolder(private val binding: ItemDeviceBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(client: ConnectedClient) {
+        fun bind(row: ConnectedDeviceRow) {
+            val client = row.client
             val macLine = DeviceNameResolver.formatMacAddressDisplay(client.macAddress, client.ipAddress)
             val label = DeviceNameResolver.formatDeviceLabel(
                 client.name, client.vendor, client.ipAddress, client.macAddress ?: macLine
@@ -53,11 +55,23 @@ class ConnectedClientAdapter : ListAdapter<ConnectedClient, ConnectedClientAdapt
                 binding.tvVendor.visibility = View.GONE
             }
 
-            binding.tvStatus.text = "Connected"
-            binding.tvStatus.setTextColor(ContextCompat.getColor(binding.root.context, R.color.green_500))
-            binding.viewStatusDot.setBackgroundColor(ContextCompat.getColor(binding.root.context, R.color.green_500))
+            val (statusText, statusColor) = when {
+                row.blocked -> Pair("Blocked", R.color.red_500)
+                else -> Pair("Connected", R.color.green_500)
+            }
+            binding.tvStatus.text = statusText
+            binding.tvStatus.setTextColor(ContextCompat.getColor(binding.root.context, statusColor))
+            binding.viewStatusDot.setBackgroundColor(ContextCompat.getColor(binding.root.context, statusColor))
             binding.tvBandwidth.visibility = View.GONE
-            binding.btnBlock.visibility = View.GONE
+
+            val deviceId = row.deviceId
+            if (deviceId != null) {
+                binding.btnBlock.visibility = View.VISIBLE
+                binding.btnBlock.text = if (row.blocked) "Unblock" else "Block"
+                binding.btnBlock.setOnClickListener { onBlockToggle(deviceId) }
+            } else {
+                binding.btnBlock.visibility = View.GONE
+            }
         }
     }
 
@@ -68,8 +82,9 @@ class ConnectedClientAdapter : ListAdapter<ConnectedClient, ConnectedClientAdapt
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) = holder.bind(getItem(position))
 
-    companion object DiffCallback : DiffUtil.ItemCallback<ConnectedClient>() {
-        private fun stableKey(c: ConnectedClient): String {
+    companion object DiffCallback : DiffUtil.ItemCallback<ConnectedDeviceRow>() {
+        private fun stableKey(row: ConnectedDeviceRow): String {
+            val c = row.client
             val mac = c.macAddress?.trim()?.uppercase()?.replace('-', ':')
                 ?.takeIf { it.length == 17 && it != "00:00:00:00:00:00" }
             val ip = c.ipAddress?.trim().orEmpty()
@@ -81,9 +96,9 @@ class ConnectedClientAdapter : ListAdapter<ConnectedClient, ConnectedClientAdapt
             }
         }
 
-        override fun areItemsTheSame(a: ConnectedClient, b: ConnectedClient) =
-            stableKey(a) == stableKey(b) || a == b
+        override fun areItemsTheSame(a: ConnectedDeviceRow, b: ConnectedDeviceRow) =
+            stableKey(a) == stableKey(b)
 
-        override fun areContentsTheSame(a: ConnectedClient, b: ConnectedClient) = a == b
+        override fun areContentsTheSame(a: ConnectedDeviceRow, b: ConnectedDeviceRow) = a == b
     }
 }

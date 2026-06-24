@@ -32,7 +32,7 @@ class MainActivity : AppCompatActivity() {
             goToLogin(); return
         }
 
-        if (!LicenseManager(this).isLicenseValid()) {
+        if (!LicenseManager(this).hasCompletedActivation()) {
             startActivity(Intent(this, com.wifiextender.ui.auth.LicenseActivity::class.java))
             finish()
             return

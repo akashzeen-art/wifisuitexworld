@@ -212,11 +212,11 @@ class DashboardViewModel : ViewModel() {
                 val systemClients = withContext(Dispatchers.Main) {
                     hotspotManager.getCurrentConnectedClients()
                 }
-                val clients = hotspotManager.mergeConnectedClientsForDisplay(discovered, systemClients, _liveClients.value.orEmpty())
+                val clients = hotspotManager.mergeConnectedClientsForDisplay(discovered, systemClients)
                 _liveClients.postValue(clients)
 
                 val reports = buildDeviceReports(clients, hotspotManager)
-                updateLocalDeviceStats(reports.size)
+                updateLocalDeviceStats(clients.size)
 
                 val existingByMac = _devices.value.orEmpty().associateBy { it.macAddress.uppercase() }
                 val localDisplay = clientsToDevices(clients, hotspotManager, existingByMac)
@@ -284,8 +284,7 @@ class DashboardViewModel : ViewModel() {
 
         val effectiveClients = hotspotManager.mergeConnectedClientsForDisplay(
             clients,
-            hotspotManager.getCurrentConnectedClients(),
-            _liveClients.value.orEmpty()
+            hotspotManager.getCurrentConnectedClients()
         )
         if (effectiveClients.isEmpty()) {
             _liveClients.postValue(emptyList())
@@ -294,7 +293,7 @@ class DashboardViewModel : ViewModel() {
         }
 
         val reports = buildDeviceReports(effectiveClients, hotspotManager)
-        updateLocalDeviceStats(maxOf(reports.size, effectiveClients.size))
+        updateLocalDeviceStats(effectiveClients.size)
 
         val existingByMac = _devices.value.orEmpty().associateBy { it.macAddress.uppercase() }
         val display = mapClientsForDevicesTab(context, effectiveClients, existingByMac)
@@ -315,7 +314,7 @@ class DashboardViewModel : ViewModel() {
             clients,
             hotspotManager.getCurrentConnectedClients()
         )
-        return clientsToDevices(merged, hotspotManager, existingByMac).filter { !it.blocked }
+        return clientsToDevices(merged, hotspotManager, existingByMac)
     }
 
     /** Fast local-only scan for Devices tab — no API call. */

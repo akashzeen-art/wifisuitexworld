@@ -78,16 +78,30 @@ class HomeFragment : Fragment() {
             updateDeviceCountDisplay(stats)
         }
 
+        viewModel.liveClients.observe(viewLifecycleOwner) { clients ->
+            if (clients.isNotEmpty()) {
+                binding.tvOnlineDevices.text = clients.size.toString()
+                binding.tvTotalDevices.text = maxOf(
+                    clients.size,
+                    viewModel.deviceStats.value?.total?.toInt() ?: 0
+                ).toString()
+            }
+            updateDeviceCountDisplay(viewModel.deviceStats.value)
+        }
+
         viewModel.arpDeviceCount.observe(viewLifecycleOwner) {
             updateDeviceCountDisplay(viewModel.deviceStats.value)
         }
 
         viewModel.devices.observe(viewLifecycleOwner) { devices ->
             val localOnline = devices.count { it.online && !it.blocked }
-            if (localOnline > 0) {
-                binding.tvOnlineDevices.text = localOnline.toString()
+            val liveCount = viewModel.liveClients.value?.size ?: 0
+            val online = maxOf(localOnline, liveCount)
+            if (online > 0) {
+                binding.tvOnlineDevices.text = online.toString()
                 binding.tvTotalDevices.text = maxOf(
                     devices.size,
+                    online,
                     viewModel.deviceStats.value?.total?.toInt() ?: 0
                 ).toString()
             }
@@ -110,9 +124,10 @@ class HomeFragment : Fragment() {
     }
 
     private fun updateDeviceCountDisplay(stats: com.wifiextender.data.model.DeviceStats?) {
+        val liveOnline = viewModel.liveClients.value?.size ?: 0
         val localOnline = viewModel.arpDeviceCount.value ?: 0
         val apiOnline = stats?.online?.toInt() ?: 0
-        val online = maxOf(localOnline, apiOnline)
+        val online = maxOf(liveOnline, localOnline, apiOnline)
         binding.tvOnlineDevices.text = online.toString()
         binding.tvBlockedDevices.text = (stats?.blocked ?: 0).toString()
         binding.tvTotalDevices.text = maxOf(

@@ -13,7 +13,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.snackbar.Snackbar
 import com.wifiextender.R
 import com.wifiextender.databinding.FragmentDevicesBinding
+import com.wifiextender.data.model.Device
 import com.wifiextender.ui.dashboard.adapter.ConnectedClientAdapter
+import com.wifiextender.ui.dashboard.adapter.ConnectedDeviceRow
 import com.wifiextender.utils.ConnectedClient
 import com.wifiextender.utils.HotspotManager
 import com.wifiextender.utils.HotspotRealtimeMonitor
@@ -30,6 +32,8 @@ class DevicesFragment : Fragment() {
     private var pollRunnable: Runnable? = null
     private var locationHintShown = false
     private var discoverInFlight = false
+    private var apiDevicesByMac: Map<String, Device> = emptyMap()
+    private var lastClients: List<ConnectedClient> = emptyList()
 
     private val clientListener: (List<ConnectedClient>) -> Unit = listener@{ clients ->
         activity?.runOnUiThread {
@@ -47,9 +51,16 @@ class DevicesFragment : Fragment() {
         hotspotManager = HotspotManager.getInstance(requireContext())
         realtimeMonitor = HotspotRealtimeMonitor.getInstance(requireContext())
 
-        adapter = ConnectedClientAdapter()
+        adapter = ConnectedClientAdapter { deviceId ->
+            viewModel.toggleBlock(deviceId)
+        }
         binding.rvDevices.layoutManager = LinearLayoutManager(requireContext())
         binding.rvDevices.adapter = adapter
+
+        viewModel.devices.observe(viewLifecycleOwner) { devices ->
+            apiDevicesByMac = devices.associateBy { normalizeMacKey(it.macAddress) }
+            submitDisplayRows(lastClients)
+        }
 
         binding.swipeRefresh.setOnRefreshListener { refreshDevices(force = true) }
 
@@ -92,6 +103,7 @@ class DevicesFragment : Fragment() {
         }
 
         viewModel.loadHome()
+        viewModel.scanAndReportDevices(requireContext(), forceRefresh = false, showUserErrors = false)
         handler.post { refreshIfSharing() }
     }
 
@@ -145,7 +157,7 @@ class DevicesFragment : Fragment() {
         }
         if (force) binding.swipeRefresh.isRefreshing = true
         if (!hasScanPermission()) requestScanPermissions()
-        discoverAndDisplay(forceDeep = true)
+        discoverAndDisplay()
     }
 
     private fun refreshIfSharing() {
@@ -156,12 +168,12 @@ class DevicesFragment : Fragment() {
         discoverAndDisplay()
     }
 
-    private fun discoverAndDisplay(forceDeep: Boolean = false) {
+    private fun discoverAndDisplay() {
         if (_binding == null || discoverInFlight || !isHotspotSharing()) return
         discoverInFlight = true
         Thread {
             try {
-                val discovered = hotspotManager.getRealtimeHotspotClients(deepScan = forceDeep)
+                val discovered = hotspotManager.getRealtimeHotspotClients(deepScan = true)
                 handler.post {
                     discoverInFlight = false
                     if (_binding == null) return@post
@@ -172,7 +184,7 @@ class DevicesFragment : Fragment() {
                 handler.post {
                     discoverInFlight = false
                     if (_binding != null) {
-                        applyClientDisplay(hotspotManager.getCurrentConnectedClients())
+                        applyClientDisplay(hotspotManager.getRealtimeHotspotClients(deepScan = true))
                         binding.swipeRefresh.isRefreshing = false
                     }
                 }
@@ -184,6 +196,7 @@ class DevicesFragment : Fragment() {
     private fun applyClientDisplay(incoming: List<ConnectedClient>) {
         if (_binding == null) return
         if (!isHotspotSharing()) {
+            lastClients = emptyList()
             adapter.submitList(emptyList())
             binding.tvOnline.text = "Connected: 0"
             binding.tvBlocked.text = "Blocked: 0"
@@ -192,14 +205,41 @@ class DevicesFragment : Fragment() {
             return
         }
 
-        val display = incoming.ifEmpty { hotspotManager.getCurrentConnectedClients() }
-        adapter.submitList(display.toList())
-        binding.tvOnline.text = "Connected: ${display.size}"
-        binding.tvBlocked.text = "Blocked: 0"
-        val showEmpty = display.isEmpty()
+        val display = incoming.ifEmpty { hotspotManager.getRealtimeHotspotClients(deepScan = true) }
+        lastClients = display
+        viewModel.publishLocalClients(requireContext(), display)
+        submitDisplayRows(display)
+    }
+
+    private fun submitDisplayRows(clients: List<ConnectedClient>) {
+        if (_binding == null) return
+        val rows = clients.map { client -> toDisplayRow(client) }
+        adapter.submitList(rows)
+        val blocked = apiDevicesByMac.values.count { it.blocked }
+        binding.tvOnline.text = "Connected: ${clients.size}"
+        binding.tvBlocked.text = "Blocked: $blocked"
+        val showEmpty = clients.isEmpty()
         binding.tvEmpty.visibility = if (showEmpty) View.VISIBLE else View.GONE
         binding.rvDevices.visibility = if (showEmpty) View.GONE else View.VISIBLE
     }
+
+    private fun toDisplayRow(client: ConnectedClient): ConnectedDeviceRow {
+        val macKey = normalizeMacKey(client.macAddress)
+        val apiDevice = when {
+            macKey.isNotEmpty() -> apiDevicesByMac[macKey]
+            else -> apiDevicesByMac.values.firstOrNull { device ->
+                !client.ipAddress.isNullOrBlank() && device.ipAddress == client.ipAddress
+            }
+        }
+        return ConnectedDeviceRow(
+            client = client,
+            deviceId = apiDevice?.id,
+            blocked = apiDevice?.blocked == true
+        )
+    }
+
+    private fun normalizeMacKey(mac: String?): String =
+        mac?.trim()?.uppercase()?.replace('-', ':').orEmpty()
 
     private fun checkLocationServices() {
         if (!hasScanPermission()) return
@@ -267,7 +307,7 @@ class DevicesFragment : Fragment() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 2001 && grantResults.any { it == android.content.pm.PackageManager.PERMISSION_GRANTED }) {
-            discoverAndDisplay(forceDeep = true)
+            discoverAndDisplay()
         }
     }
 
@@ -278,6 +318,6 @@ class DevicesFragment : Fragment() {
     }
 
     companion object {
-        private const val REFRESH_MS = 3_000L
+        private const val REFRESH_MS = 2_000L
     }
 }

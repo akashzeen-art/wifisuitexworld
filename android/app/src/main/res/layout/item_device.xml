@@ -63,7 +63,7 @@
             android:layout_marginTop="10dp"
             android:text="Block"
             android:textSize="13sp"
-            android:visibility="gone"
+            android:visibility="visible"
             style="@style/Widget.MaterialComponents.Button" />
 
     </LinearLayout>

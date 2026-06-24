@@ -14,7 +14,7 @@ object AuthNavigator {
             return Intent(context, LoginActivity::class.java)
         }
         val licenseManager = LicenseManager(context)
-        return if (licenseManager.isLicenseValid()) {
+        return if (licenseManager.hasCompletedActivation()) {
             Intent(context, MainActivity::class.java)
         } else {
             Intent(context, LicenseActivity::class.java)

@@ -333,7 +333,7 @@ class HotspotFragment : Fragment() {
         }
 
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-            val clients = hotspotManager.discoverConnectedClients(deepScan = true)
+            val clients = hotspotManager.getRealtimeHotspotClients(deepScan = true)
             withContext(Dispatchers.Main) {
                 if (_binding != null) updateConnectedDisplay(clients)
             }

@@ -40,7 +40,7 @@ class LicenseActivity : AppCompatActivity() {
         ApiConfig.ensureProductionUrl(this)
         RetrofitClient.resetApi()
 
-        if (LicenseManager(this).isLicenseValid()) {
+        if (LicenseManager(this).hasCompletedActivation()) {
             goToMain()
             return
         }

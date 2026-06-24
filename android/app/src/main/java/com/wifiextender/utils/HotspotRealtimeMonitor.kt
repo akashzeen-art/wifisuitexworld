@@ -37,24 +37,10 @@ class HotspotRealtimeMonitor private constructor(context: Context) {
                 } else {
                     hotspotManager.userHotspotActive = true
                     hotspotManager.ensureClientListeners()
-                    val system = hotspotManager.getCurrentConnectedClients()
-                    val clients = if (system.isNotEmpty()) {
-                        system
-                    } else {
-                        val discovered = hotspotManager.discoverConnectedClients(deepScan = deep)
-                        if (discovered.isEmpty()) {
-                            hotspotManager.discoverConnectedClients(deepScan = true)
-                        } else {
-                            discovered
-                        }
-                    }
+                    val clients = hotspotManager.getRealtimeHotspotClients(deepScan = true)
                     if (generation == pollGeneration) {
-                        val changed = snapshotChanged(lastSnapshot, clients) ||
-                            clients.size != lastSnapshot.size
-                        if (changed) {
-                            lastSnapshot = clients
-                            handler.post { notifyListeners(clients) }
-                        }
+                        lastSnapshot = clients
+                        handler.post { notifyListeners(clients) }
                     }
                 }
             } catch (e: Exception) {
@@ -132,7 +118,7 @@ class HotspotRealtimeMonitor private constructor(context: Context) {
 
     companion object {
         private const val TAG = "HotspotMonitor"
-        private const val POLL_INTERVAL_MS = 3_000L
+        private const val POLL_INTERVAL_MS = 2_000L
 
         @Volatile
         private var instance: HotspotRealtimeMonitor? = null

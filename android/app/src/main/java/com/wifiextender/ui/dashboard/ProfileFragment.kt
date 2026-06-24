@@ -36,7 +36,7 @@ class ProfileFragment : Fragment() {
         }
 
         val brand = HotspotManager.getInstance(requireContext()).getDetectedPhoneBrand()
-        binding.tvAppVersion.text = "WiFiExtender v1.3.2 · $brand"
+        binding.tvAppVersion.text = "WiFiExtender v1.3.3 · $brand"
 
         binding.btnLogout.setOnClickListener {
             androidx.appcompat.app.AlertDialog.Builder(requireContext())

@@ -256,21 +256,42 @@ class HotspotManager(private val context: Context) {
         return readConnectedClientsFast()
     }
 
-    /** Live clients for Hotspot / Devices tabs — system APIs first, then deep scan. */
+    /** Live clients — always full discovery; re-scan when count is below DHCP/system hints. */
     fun getRealtimeHotspotClients(deepScan: Boolean = true): List<ConnectedClient> {
         if (!isHotspotOn() && !syncHotspotStateFromSystem()) return emptyList()
-        val system = readSystemApiClientsOnMainThread()
-        if (system.isNotEmpty() && !deepScan) return system
-        return discoverConnectedClients(deepScan = deepScan)
+        val systemCount = readSystemReportedClientCount()
+        val dhcpCount = readDhcpLeaseHints().size
+        val targetCount = maxOf(systemCount, dhcpCount)
+        var result = discoverConnectedClients(deepScan = true)
+        var attempt = 0
+        while (result.size < targetCount && targetCount > 0 && attempt < 2) {
+            invalidateClientScanCache()
+            lastSubnetScanAt = 0L
+            result = discoverConnectedClients(deepScan = true)
+            attempt++
+        }
+        return result
+    }
+
+    private fun clientIdentity(client: ConnectedClient): String {
+        val mac = client.macAddress?.trim()?.uppercase()?.replace('-', ':')
+            ?.takeIf { it.length == 17 && it != "00:00:00:00:00:00" }
+        val ip = client.ipAddress?.trim().orEmpty()
+        return when {
+            mac != null && ip.isNotEmpty() -> "$mac|$ip"
+            mac != null -> mac
+            ip.isNotEmpty() -> "ip:$ip"
+            client.name.isNotBlank() -> "name:${client.name}"
+            else -> "anon:${client.hashCode()}"
+        }
     }
 
     private fun mergeConnectedClients(vararg lists: List<ConnectedClient>): List<ConnectedClient> {
         val merged = LinkedHashMap<String, ConnectedClient>()
         lists.forEach { list ->
             list.forEach { client ->
-                val key = client.macAddress?.uppercase()?.takeIf { it.length == 17 }
-                    ?: client.ipAddress?.trim().orEmpty()
-                if (key.isBlank()) return@forEach
+                if (client.macAddress.isNullOrBlank() && client.ipAddress.isNullOrBlank()) return@forEach
+                val key = clientIdentity(client)
                 val existing = merged[key]
                 merged[key] = if (existing == null) client else pickBetterClient(existing, client)
             }
@@ -1071,8 +1092,11 @@ class HotspotManager(private val context: Context) {
         synchronized(subnetScanLock) {
             if (subnetScanInProgress) return subnetScanCache.ifEmpty { stableHotspotClients }
             val now = System.currentTimeMillis()
-            if (!supplementExisting && subnetScanCache.isNotEmpty() && now - lastSubnetScanAt < 30_000) {
-                return subnetScanCache
+            val systemCount = readSystemReportedClientCount()
+            if (!supplementExisting && subnetScanCache.isNotEmpty() && now - lastSubnetScanAt < 15_000) {
+                if (subnetScanCache.size >= systemCount || systemCount <= 0) {
+                    return subnetScanCache
+                }
             }
             subnetScanInProgress = true
             lastSubnetScanAt = now
@@ -1121,7 +1145,7 @@ class HotspotManager(private val context: Context) {
                     }
                     pool.shutdown()
                     try {
-                        pool.awaitTermination(25, TimeUnit.SECONDS)
+                        pool.awaitTermination(45, TimeUnit.SECONDS)
                     } catch (_: InterruptedException) {
                         pool.shutdownNow()
                     }
@@ -1272,9 +1296,9 @@ class HotspotManager(private val context: Context) {
     /** How many clients the phone OS reports (Settings / dumpsys). */
     fun readSystemReportedClientCount(): Int {
         refreshTetheringClientsCache()
-        val cached = tetheringClientsCache.size + softApClientsCache.size
-        if (cached > 0) return cached
-        return try {
+        val mergedCount = mergeClientCaches(tetheringClientsCache + softApClientsCache).size
+        val dhcpCount = readDhcpLeaseHints().size
+        val dumpsysCount = try {
             val dump = DumpsysClientParser.runDumpsys(arrayOf("dumpsys", "tethering"))
             listOf(
                 Regex("""(?i)connected\s+clients?:\s*(\d+)"""),
@@ -1287,6 +1311,7 @@ class HotspotManager(private val context: Context) {
         } catch (_: Exception) {
             0
         }
+        return maxOf(mergedCount, dhcpCount, dumpsysCount).coerceIn(0, 64)
     }
 
     private fun pingHost(ip: String): Boolean {
@@ -1624,7 +1649,7 @@ class HotspotManager(private val context: Context) {
                 merged.add(orphan)
             }
         }
-        return merged.distinctBy { it.macAddress?.uppercase() ?: it.ipAddress }
+        return merged.distinctBy { clientIdentity(it) }
     }
 
     private fun readDhcpLeasesByIp(): Map<String, Pair<String?, String?>> {
@@ -1691,17 +1716,23 @@ class HotspotManager(private val context: Context) {
         syncHotspotStateFromSystem()
         val systemApiClients = readSystemApiClientsOnMainThread()
         val dhcpByIp = readDhcpLeasesByIp()
+        val dhcpHints = readDhcpLeaseHints()
         val systemCount = readSystemReportedClientCount()
+        val targetCount = maxOf(systemCount, dhcpHints.size, systemApiClients.size)
 
         val merged = LinkedHashMap<String, ConnectedClient>()
         fun add(raw: ConnectedClient) {
             val enriched = enrichClient(raw, dhcpByIp)
-            val mac = enriched.macAddress?.uppercase()?.takeIf { it.length == 17 }
-            val key = mac ?: enriched.ipAddress?.takeIf { it.isNotBlank() } ?: return
-            if (isGatewayOrLocalIp(enriched.ipAddress) && mac == null) return
+            if (isGatewayOrLocalIp(enriched.ipAddress) &&
+                enriched.macAddress.isNullOrBlank()) return
+            val key = clientIdentity(enriched)
+            if (key.startsWith("anon:")) return
             val existing = merged[key]
             merged[key] = if (existing == null) enriched else pickBetterClient(existing, enriched)
-            if (mac != null && !enriched.ipAddress.isNullOrBlank()) cacheIpMacMapping(enriched.ipAddress!!, mac)
+            val mac = enriched.macAddress?.uppercase()?.takeIf { it.length == 17 }
+            if (mac != null && !enriched.ipAddress.isNullOrBlank()) {
+                cacheIpMacMapping(enriched.ipAddress!!, mac)
+            }
         }
 
         systemApiClients.forEach { add(it) }
@@ -1734,8 +1765,9 @@ class HotspotManager(private val context: Context) {
                     (client.macAddress != null || !client.ipAddress.isNullOrBlank())
             }
 
-        if (result.size < systemCount && deepScan && (isHotspotLikelyActive() || systemCount > 0)) {
+        if (result.size < targetCount && deepScan && (isHotspotLikelyActive() || targetCount > 0)) {
             invalidateClientScanCache()
+            lastSubnetScanAt = 0L
             scanHotspotSubnetClients(supplementExisting = true).forEach { add(it) }
             result = reconcileClientsByIp(merged.values)
                 .filter { client ->
@@ -1744,7 +1776,7 @@ class HotspotManager(private val context: Context) {
                 }
         }
 
-        if (result.isEmpty() && systemCount > 0) {
+        if (result.isEmpty() && targetCount > 0) {
             DumpsysClientParser.collectFromAllSources()
                 .filter { !isGatewayOrLocalIp(it.ipAddress) }
                 .forEach { add(it) }

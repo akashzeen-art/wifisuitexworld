@@ -54,8 +54,12 @@ class LicenseViewModel : ViewModel() {
                 val resp = RetrofitClient.apiService.activateLicense(
                     LicenseActivateRequest(key, machineId, machineLabel)
                 )
-                if (resp.isSuccessful && resp.body()?.success == true) {
-                    val body = resp.body()!!
+                if (resp.isSuccessful) {
+                    val body = resp.body()?.copy(success = true)
+                        ?: com.wifiextender.data.model.LicenseActivateResponse(
+                            success = true,
+                            message = "License activated!"
+                        )
                     LicenseManager(context).saveActivation(key, body)
                     _state.value = LicenseUiState.Activated(body.message ?: "License activated!")
                 } else {
@@ -105,12 +109,16 @@ class LicenseViewModel : ViewModel() {
                 val resp = RetrofitClient.apiService.validateLicense(
                     LicenseValidateRequest(key, machineId)
                 )
-                if (resp.isSuccessful && resp.body()?.success == true) {
-                    resp.body()?.let { licenseManager.saveActivation(key, it) }
+                if (resp.isSuccessful) {
+                    val body = resp.body()?.copy(success = true)
+                        ?: com.wifiextender.data.model.LicenseActivateResponse(success = true)
+                    licenseManager.saveActivation(key, body)
                     onValid()
-                } else {
+                } else if (!licenseManager.hasCompletedActivation()) {
                     licenseManager.clear()
                     onInvalid()
+                } else {
+                    onValid()
                 }
             } catch (_: Exception) {
                 if (licenseManager.isLicenseValid()) onValid() else onInvalid()
